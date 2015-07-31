@@ -21,6 +21,7 @@ import (
 	_ "github.com/docker/machine/drivers/google"
 	_ "github.com/docker/machine/drivers/hyperv"
 	_ "github.com/docker/machine/drivers/none"
+	_ "github.com/docker/machine/drivers/oneview"
 	_ "github.com/docker/machine/drivers/openstack"
 	_ "github.com/docker/machine/drivers/rackspace"
 	_ "github.com/docker/machine/drivers/softlayer"

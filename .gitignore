@@ -1,2 +1,4 @@
 docker-machine*
 *.log
+.gdbinit
+.atom-gdb.json
