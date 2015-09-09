@@ -1,0 +1,22 @@
+{
+  "name": "EGSL_LAB",
+  "cases": [
+    {
+      "name": "default",
+      "enabled": false,
+      "test_data" : {},
+      "expects_data" : {}
+    },
+    {
+      "name": "TestGetAPIVersion",
+      "enabled": true,
+      "test_data" : {},
+      "expects_data":
+        {
+          "CurrentVersion": 120,
+          "MinimumVersion": 1,
+          "FakeData":"foo"
+        }
+    }
+  ]
+}
