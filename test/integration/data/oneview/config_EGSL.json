@@ -14,8 +14,8 @@
         "SerialNumber": "2M25090RMW",
         "ServerHardwareURI": "/rest/server-hardware/30373237-3132-4D32-3235-303930524D57",
         "ServerProfileName": "Server_Profile_scs79",
-        "HardwareTypeURI": "/rest/server-hardware-types/DB7726F7-F601-4EA8-B4A6-D1EE1B32C07C",
-        "GroupURI": "/rest/enclosure-groups/56ad0069-8362-42fd-b4e3-f5c5a69af039"
+        "HardwareTypeURI": "'/rest/server-hardware-types/DB7726F7-F601-4EA8-B4A6-D1EE1B32C07C'",
+        "GroupURI": "'/rest/enclosure-groups/56ad0069-8362-42fd-b4e3-f5c5a69af039'"
       },
       "expects_data": {
         "MACAddress": "34:64:A9:BB:E6:98",
