@@ -11,7 +11,12 @@
       "name": "dev",
       "enabled": true,
       "test_data": {
+        "HostName": "docker_machine_test01",
+        "FreeBladeSerialNumber" : "2M25090RMR",
+        "FreeBladeName" : "se05, bay 14",
+        "TemplateProfile": "docker_server_template",
         "SerialNumber": "2M25090RMW",
+        "UsedBladeName": "se05, bay 16",
         "ServerHardwareURI": "/rest/server-hardware/30373237-3132-4D32-3235-303930524D57",
         "ServerProfileName": "Server_Profile_scs79",
         "HardwareTypeURI": "/rest/server-hardware-types/DB7726F7-F601-4EA8-B4A6-D1EE1B32C07C",
