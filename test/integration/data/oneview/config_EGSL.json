@@ -29,6 +29,19 @@
         "FakeData": "foo",
         "SerialNumber": "2M25090RMW"
       }
+    },
+    {
+      "name": "dev_icsp",
+      "enabled": true,
+      "test_data": {
+        "HostName": "docker_machine_test01"
+      },
+      "expects_data": {
+        "CurrentVersion": 108,
+        "MinimumVersion": 1,
+        "FakeData": "foo"
+      }
+
     }
   ]
 }
