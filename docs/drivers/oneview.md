@@ -67,6 +67,12 @@ cat >> "/home/${DOCKER_USER}/.ssh/authorized_keys" << EOF
 ${DOCKER_PUBKEY}
 EOF
 
+# give sudoers access
+cat >> "/etc/sudoers.d/90-${DOCKER_USER}" << SUDOERS_EOF
+# User rules for icsp docker user
+${DOCKER_USER} ALL=(ALL) NOPASSWD:ALL
+SUDOERS_EOF
+
 ```
 
 <!-- list-start: 4 -->4. For the OS build plan, setup two custom attributes that will be popluated and passed to the script on step 3.   The first attribute is `docker_user`, and the second attribute is `public_key`.   Note, If a different value for docker_user is desired, then you should set the user and specify the user through the --oneview-ssh-user argument.  This will configure the provisioning to occur with that user.   By default the public key will be generated for each environment you create, this is not configurable.  The script added should have arguments : @docker_user@ "@public_key@"
