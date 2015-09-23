@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"github.com/docker/machine/log"
 	"github.com/docker/machine/drivers/oneview/rest"
+	"github.com/docker/machine/drivers/oneview/utils"
 )
 
 // HardwareState
@@ -172,7 +173,7 @@ func (c *OVClient) GetServerHardwareList(filters []string, sort string)(ServerHa
 
   // parse the url and setup any query strings
 	var Url *url.URL
-	Url, err = url.Parse(c.Sanatize(c.Endpoint))
+	Url, err = url.Parse(utils.Sanatize(c.Endpoint))
 	if err != nil {
 		return serverlist, err
 	}
