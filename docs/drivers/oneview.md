@@ -106,6 +106,9 @@ Environment variables and default values:
 |                            |
 | `--oneview-server-template`| OneView server template to use for blade provisioning, see OneView Server Template for setup.
 | `--oneview-os-plan`        | OneView ICSP OS Build plan to use for OS provisioning, see ICS OS Plan for setup.
+|                            |
+| `--oneview-ilo-user`       | ILO user id that is used during ICSP server creation
+| `--oneview-ilo-password`   | ILO password that is used durring ICSP server creation
 
 
 ## OneView Server Template
