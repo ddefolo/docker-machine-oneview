@@ -109,6 +109,7 @@ Environment variables and default values:
 |                            |
 | `--oneview-ilo-user`       | ILO user id that is used during ICSP server creation
 | `--oneview-ilo-password`   | ILO password that is used durring ICSP server creation
+| `--oneview-ilo-port`       | Optional ILO port to use, defaults to 443
 
 
 ## OneView Server Template

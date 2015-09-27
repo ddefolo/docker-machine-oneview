@@ -13,8 +13,8 @@
         "ValueTest2ExistingNew" : "999999",
         "KeyTest3New" : "docker_user",
         "ScopeTest3New" : "server",
-        "ValueTest3New" : "docker"
-
+        "ValueTest3New" : "docker",
+        "JobURIJSONString" : "{ \"uri\" : \"/rest/os-deployment-jobs/99999\"}"
       },
       "expects_data": {
         "ValueTest1" : "CN12345678",
