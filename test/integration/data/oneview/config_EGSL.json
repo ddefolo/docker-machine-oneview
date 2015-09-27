@@ -4,8 +4,23 @@
     {
       "name": "default",
       "enabled": false,
-      "test_data": {},
-      "expects_data": {}
+      "test_data": {
+        "CustomAttributeJSONString":"{\"customAttributes\" : [ { \"key\" : \"__OPSW_next_device_group_recalc_time\", \"values\" : [ { \"scope\" : \"facility\", \"value\" : \"1412012497.24\" } ] }, { \"key\" : \"__OPSW_initial_discovery_name\", \"values\" : [ { \"scope\" : \"server\", \"value\" : \"CN12345678\" } ] }, { \"key\" : \"__OPSW_slice_ips\", \"values\" : [ { \"scope\" : \"facility\", \"value\" : \" 1:192.0.2.0 \" } ] }, { \"key\" : \"skip_reboot\", \"values\" : [ { \"scope\" : \"server\", \"value\" : \"yes\" } ] } ] }",
+        "KeyTest1" : "__OPSW_initial_discovery_name",
+        "ScopeTest1" : "server",
+        "KeyTest2Existing" : "__OPSW_next_device_group_recalc_time",
+        "ScopeTest2Existing" : "facility",
+        "ValueTest2ExistingNew" : "999999",
+        "KeyTest3New" : "docker_user",
+        "ScopeTest3New" : "server",
+        "ValueTest3New" : "docker"
+
+      },
+      "expects_data": {
+        "ValueTest1" : "CN12345678",
+        "ValueTest2" : "999999",
+        "ValueTest3" : "docker"
+      }
     },
     {
       "name": "dev",
