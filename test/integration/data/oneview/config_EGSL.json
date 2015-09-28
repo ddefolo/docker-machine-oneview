@@ -30,6 +30,7 @@
         "HostName": "docker_machine_test01",
         "FreeBladeSerialNumber" : "2M25090RMR",
         "FreeBladeName" : "se05, bay 14",
+        "IloIPAddress":  "172.28.3.136",
         "TemplateProfile": "docker_server_template",
         "SerialNumber": "2M25090RMW",
         "UsedBladeName": "se05, bay 16",
