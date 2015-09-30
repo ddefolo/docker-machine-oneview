@@ -25,13 +25,14 @@ Provisioning an operating system onto the allocated hardware that this driver wi
 
 1. Use one of the standard RedHat Linux 7.1 boot images.
 2. The boot image can be named anything, but this driver will use RHEL71_DOCKER_1.8 for the default.  If you want an alternate name, please make sure to pass the --oneview-os-plan option with the alternate name.
-3. On the build plan add a bash script step to the next to the last step that is waiting on the server to boot.  The script contents for this step should appear as the following:
+3. On the build plan (step 25) add a bash script step to the next to the last step that is waiting on the server to boot.  The script contents for this step should appear as the following:
 
 ```bash
 #!/bin/bash
 echo "This script will pre-configure the server to run docker"
 DOCKER_USER_INPUT=$1
-DOCKER_PUBKEY_INPUT=$2
+DOCKER_PROXY_INPUT=$2
+DOCKER_PUBKEY_INPUT=$3
 if [ -z "${DOCKER_PUBKEY_INPUT}" ]; then
   echo "ERROR : this script requires a public key for docker user!"
   echo "USAGE: $0 <docker user> '<public key>'"
@@ -39,20 +40,27 @@ if [ -z "${DOCKER_PUBKEY_INPUT}" ]; then
 fi
 
 DOCKER_USER=${DOCKER_USER_INPUT:-"docker"}
+DOCKER_PROXY=${DOCKER_PROXY_INPUT}
 DOCKER_PUBKEY=${DOCKER_PUBKEY_INPUT}
+
 # boot the external interface, replace this to another interface dependening on your hardware
 ifup eno50
 
-# optionally set some proxy server configuration options up
-# export http_proxy="http://proxy:8080"
-# export https_proxy="http://proxy:8080"
-# export HTTP_PROXY="http://proxy:8080"
-# export HTTPS_PROXY="http://proxy:8080"
+# optionally set first boot proxy server configuration
+export http_proxy="http://proxy:8080"
+export https_proxy="http://proxy:8080"
+export HTTP_PROXY="http://proxy:8080"
+export HTTPS_PROXY="http://proxy:8080"
+
+# optionally set some persistent proxy server configuration
+cat >> "/root/.bash_profile" << EOF
+${DOCKER_PROXY}
+EOF
 
 # create a service account
 useradd "${DOCKER_USER}" -d "/home/${DOCKER_USER}"
 
-# setup .ssh folder
+# setup .ssh folderls -ak
 if [ ! -d "/home/${DOCKER_USER}/.ssh" ]; then
   mkdir -p "/home/${DOCKER_USER}/.ssh"
   chmod 700 "/home/${DOCKER_USER}/.ssh"
@@ -67,11 +75,22 @@ cat >> "/home/${DOCKER_USER}/.ssh/authorized_keys" << EOF
 ${DOCKER_PUBKEY}
 EOF
 
+# modify /home/{user}/.bash_profile to set a persistent proxy
+cat >> "/home/${DOCKER_USER}/.bash_profile" << EOF
+${DOCKER_PROXY}
+EOF
+
 # give sudoers access
 cat >> "/etc/sudoers.d/90-${DOCKER_USER}" << SUDOERS_EOF
 # User rules for icsp docker user
 ${DOCKER_USER} ALL=(ALL) NOPASSWD:ALL
 SUDOERS_EOF
+
+# modify primary nic eno50 to start on boot
+sed -i 's/ONBOOT=no/ONBOOT=yes/g' /etc/sysconfig/network-scripts/ifcfg-eno50
+
+# optional modify the hostname
+# sed -i 's/localhost.localdomain/egslcloud-scs79.fc.hpe.com/g' /etc/hostname
 
 ```
 
