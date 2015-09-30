@@ -32,6 +32,7 @@
         "FreeBladeName" : "se05, bay 14",
         "FreeHostName": "ezsetupsystem3464a9b​be688",
         "IcspName" : "sRack03-se05-14",
+        "IcspName2" : "sRack03-se05-16",
         "IloIPAddress":  "172.28.3.134",
         "TemplateProfile": "docker_server_template",
         "SerialNumber": "2M25090RMW",
@@ -46,6 +47,7 @@
         "CurrentVersion": 120,
         "MinimumVersion": 1,
         "FakeData": "foo",
+        "IcspName2" : "sRack03-se05-16",
         "SerialNumber": "2M25090RMW"
       }
     },
