@@ -19,9 +19,9 @@ Create machines using HP OneView API 1.20
 
 ### Setup enclosure and server profile
 
-### Setup icsp boot image
+### Setup ICsp boot image
 
-Provisioning an operating system onto the allocated hardware that this driver will create requires us to have a working Insight Controller Server Provisioning (ICSP) build plan created.
+Provisioning an operating system onto the allocated hardware that this driver will create requires us to have a working Insight Control server provisioning (ICsp) OS build plan (OSbp) created.
 
 1. Use one of the standard RedHat Linux 7.1 boot images.
 2. The boot image can be named anything, but this driver will use RHEL71_DOCKER_1.8 for the default.  If you want an alternate name, please make sure to pass the --oneview-os-plan option with the alternate name.
