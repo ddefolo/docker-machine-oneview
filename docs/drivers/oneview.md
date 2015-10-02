@@ -26,76 +26,49 @@ Provisioning an operating system onto the allocated hardware that this driver wi
 1. Use one of the standard RedHat Linux 7.1 boot images.
 2. The boot image can be named anything, but this driver will use RHEL71_DOCKER_1.8 for the default.  If you want an alternate name, please make sure to pass the --oneview-os-plan option with the alternate name.
 3. On the build plan (step 25) add a bash script step to the next to the last step that is waiting on the server to boot.  The script contents for this step should appear as the following:
+   get script from : drivers/oneview/scripts/docker_os_build_plan.sh
+4. For the OS build plan, setup two custom attributes that will be popluated and passed to the script on step 3.   The first attribute is `docker_user`, and the second attribute is `public_key`.   Note, If a different value for docker_user is desired, then you should set the user and specify the user through the --oneview-ssh-user argument.  This will configure the provisioning to occur with that user.   By default the public key will be generated for each environment you create, this is not configurable.  The script added should have arguments : @docker_user@ "@public_key@" @docker_hostname@ "@proxy@" @proxy_enabled@
 
+### Extra setup on OS Build Plan
+
+There may be additional network requirements that you should specify so that specific local network requirements are met.  For example, proxy settings.
+To work around this, please setup an additional build script that you customize the target os configuration with what will be required for your network.
+
+This step is only needed for systems that need additional setup. Some examples
+
+#### update /etc/yum.repos.d/ with special repos
 ```bash
-#!/bin/bash
-echo "This script will pre-configure the server to run docker"
-DOCKER_USER_INPUT=$1
-DOCKER_PROXY_INPUT=$2
-DOCKER_PUBKEY_INPUT=$3
-if [ -z "${DOCKER_PUBKEY_INPUT}" ]; then
-  echo "ERROR : this script requires a public key for docker user!"
-  echo "USAGE: $0 <docker user> '<public key>'"
-  exit 1
-fi
-
-DOCKER_USER=${DOCKER_USER_INPUT:-"docker"}
-DOCKER_PROXY=${DOCKER_PROXY_INPUT}
-DOCKER_PUBKEY=${DOCKER_PUBKEY_INPUT}
-
-# boot the external interface, replace this to another interface dependening on your hardware
-ifup eno50
-
-# optionally set first boot proxy server configuration
-export http_proxy="http://proxy:8080"
-export https_proxy="http://proxy:8080"
-export HTTP_PROXY="http://proxy:8080"
-export HTTPS_PROXY="http://proxy:8080"
-
-# optionally set some persistent proxy server configuration
-cat >> "/root/.bash_profile" << EOF
-${DOCKER_PROXY}
-EOF
-
-# create a service account
-useradd "${DOCKER_USER}" -d "/home/${DOCKER_USER}"
-
-# setup .ssh folderls -ak
-if [ ! -d "/home/${DOCKER_USER}/.ssh" ]; then
-  mkdir -p "/home/${DOCKER_USER}/.ssh"
-  chmod 700 "/home/${DOCKER_USER}/.ssh"
-  chown "${DOCKER_USER}:${DOCKER_USER}" "/home/${DOCKER_USER}/.ssh"
-fi
-if [ ! -f "/home/${DOCKER_USER}/.ssh/authorized_keys" ] ; then
-  touch "/home/${DOCKER_USER}/.ssh/authorized_keys"
-  chmod 600 "/home/${DOCKER_USER}/.ssh/authorized_keys"
-  chown "${DOCKER_USER}:${DOCKER_USER}" "/home/${DOCKER_USER}/.ssh/authorized_keys"
-fi
-cat >> "/home/${DOCKER_USER}/.ssh/authorized_keys" << EOF
-${DOCKER_PUBKEY}
-EOF
-
-# modify /home/{user}/.bash_profile to set a persistent proxy
-cat >> "/home/${DOCKER_USER}/.bash_profile" << EOF
-${DOCKER_PROXY}
-EOF
-
-# give sudoers access
-cat >> "/etc/sudoers.d/90-${DOCKER_USER}" << SUDOERS_EOF
-# User rules for icsp docker user
-${DOCKER_USER} ALL=(ALL) NOPASSWD:ALL
-SUDOERS_EOF
-
-# modify primary nic eno50 to start on boot
-sed -i 's/ONBOOT=no/ONBOOT=yes/g' /etc/sysconfig/network-scripts/ifcfg-eno50
-
-# optional modify the hostname
-# sed -i 's/localhost.localdomain/egslcloud-scs79.fc.hpe.com/g' /etc/hostname
-
+cat > /etc/yum.repos.d/RedHat.repo << REPO
+# base
+[RedHat-7.1Server-x86_64-Server]
+name=RedHat Linux 7.1Server - os - x86_64 - Server
+baseurl=http://linuxcoe.corp.hp.com/LinuxCOE/RedHat-yum/7.1Server/en/os/x86_64
+gpgcheck=0
+# updates x86_64
+[RedHat-7.1Server-x86_64-errata]
+name=RedHat-7.1Server-x86_64-errata
+baseurl=http://linuxcoe.corp.hp.com/LinuxCOE/RedHat-updates-yum/7.1Server/en/os/x86_64
+gpgcheck=0
+REPO
 ```
 
-<!-- list-start: 4 -->4. For the OS build plan, setup two custom attributes that will be popluated and passed to the script on step 3.   The first attribute is `docker_user`, and the second attribute is `public_key`.   Note, If a different value for docker_user is desired, then you should set the user and specify the user through the --oneview-ssh-user argument.  This will configure the provisioning to occur with that user.   By default the public key will be generated for each environment you create, this is not configurable.  The script added should have arguments : @docker_user@ "@public_key@"
-
+#### update /etc/yum.conf to use network appropriate settings when you are in a LR1 for example
+```bash
+$proxy=$1
+cat > /etc/yum.conf << YUMCONF
+[main]
+cachedir=/var/cache/yum/$basearch/$releasever
+keepcache=0
+debuglevel=2
+logfile=/var/log/yum.log
+exactarch=1
+obsoletes=1
+gpgcheck=1
+plugins=1
+installonly_limit=3
+proxy=$proxy
+YUMCONF
+```
 
 ### Setup service accounts
 
