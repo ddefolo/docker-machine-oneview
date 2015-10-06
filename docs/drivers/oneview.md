@@ -70,7 +70,17 @@ proxy=$proxy
 YUMCONF
 ```
 
-### Setup service accounts
+## Version supported
+
+The `--oneview-apiversion` option or ONEVIEW_APIVERSION environment variable should be
+set to one of the following version integers.
+
+| api version (see --oneview-apiversion) | HP OneView Version |   HP ICsp Version     |
+|----------------------------------------|--------------------|-----------------------|
+| 120                                    | 120                | 108                   |
+| 200                                    | 200                | 108                   |
+
+TODO: we need to re-work this logic to make it automatic.
 
 ## Options:
 
