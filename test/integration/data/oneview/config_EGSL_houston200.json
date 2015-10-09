@@ -1,5 +1,5 @@
 {
-  "name": "EGSL_LAB",
+  "name": "EGSL_HOUSTON200_LAB",
   "cases": [
     {
       "name": "default",
@@ -33,28 +33,28 @@
       "enabled": true,
       "test_data": {
         "HostName": "docker_machine_test01",
-        "FreeBladeSerialNumber" : "2M25090RMR",
-        "FreeBladeName" : "se05, bay 14",
-        "FreeHostName": "ezsetupsystem3464a9b​be688",
-        "IcspName" : "sRack03-se05-14",
-        "IcspName2" : "sRack03-se05-16",
-        "IloIPAddress":  "172.28.3.134",
-        "TemplateProfile": "docker_server_template",
-        "SerialNumber": "2M25090RMW",
-        "UsedBladeName": "se05, bay 16",
-        "ServerHardwareURI": "/rest/server-hardware/30373237-3132-4D32-3235-303930524D57",
-        "ServerProfileName": "Server_Profile_scs79",
-        "HardwareTypeURI": "/rest/server-hardware-types/DB7726F7-F601-4EA8-B4A6-D1EE1B32C07C",
-        "GroupURI": "/rest/enclosure-groups/56ad0069-8362-42fd-b4e3-f5c5a69af039",
-        "OSBuildPlan":"RHEL71_DOCKER_1.8_Wenlock"
+        "FreeBladeSerialNumber" : "2M25090RMS",
+        "FreeBladeName" : "HOUEGSL-C7000-04, bay 5",
+        "FreeHostName": "houegsl-c7000-04-ilo05",
+        "IcspName" : "IC04-HOUEGSL-C7000-04-5",
+        "IcspName2" : "IC04-HOUEGSL-C7000-04-4",
+        "IloIPAddress":  "16.85.0.34",
+        "TemplateProfile": "docker1.8_server_template",
+        "SerialNumber": "VCGHJL9004",
+        "UsedBladeName": "HOUEGSL-C7000-04, bay 4",
+        "ServerHardwareURI": "/rest/server-hardware/30373237-3132-4D32-3235-303930524E30",
+        "ServerProfileName": "houegsl-c7000-04-04",
+        "HardwareTypeURI": "/rest/server-hardware-types/1A1EBD9A-6ABE-4D96-BB9C-E9F39876BD3E",
+        "GroupURI": "/rest/enclosure-groups/9bf6f6b2-abf5-4875-b72c-4cb6e744691b",
+        "OSBuildPlan":"RHEL71_DOCKER_1.8"
       },
       "expects_data": {
-        "MACAddress": "34:64:A9:BB:E6:98",
-        "CurrentVersion": 120,
+        "MACAddress": "D6:6D:EC:10:00:0A",
+        "CurrentVersion": 200,
         "MinimumVersion": 1,
         "FakeData": "foo",
-        "IcspName2" : "sRack03-se05-16",
-        "SerialNumber": "2M25090RMW"
+        "IcspName2" : "IC04-HOUEGSL-C7000-04-4",
+        "SerialNumber": "2M25090RN0"
       }
     },
     {

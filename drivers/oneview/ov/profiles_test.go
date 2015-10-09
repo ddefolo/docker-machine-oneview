@@ -1,22 +1,24 @@
 package ov
+
 import (
+	"fmt"
 	"os"
 	"testing"
-	"fmt"
 
+	"github.com/docker/machine/log"
 	"github.com/stretchr/testify/assert"
 )
 
 // find Server_Profile_scs79
 func TestGetProfileByName(t *testing.T) {
 	var (
-		d *OVTest
-		c *OVClient
+		d        *OVTest
+		c        *OVClient
 		testname string
 	)
 	if os.Getenv("ONEVIEW_TEST_ACCEPTANCE") == "true" {
 		d, c = getTestDriverA()
-		testname  = d.Tc.GetTestData(d.Env, "ServerProfileName").(string)
+		testname = d.Tc.GetTestData(d.Env, "ServerProfileName").(string)
 		if c == nil {
 			t.Fatalf("Failed to execute getTestDriver() ")
 		}
@@ -30,12 +32,11 @@ func TestGetProfileByName(t *testing.T) {
 
 	} else {
 		d, c = getTestDriverU()
-		testname  = d.Tc.GetExpectsData(d.Env, "ServerProfileName").(string)
+		testname = d.Tc.GetTestData(d.Env, "ServerProfileName").(string)
 		data, err := c.GetProfileByName(testname)
-		assert.Error(t,err, fmt.Sprintf("ALL ok, no error, caught as expected: %s,%+v\n",err, data))
+		assert.Error(t, err, fmt.Sprintf("ALL ok, no error, caught as expected: %s,%+v\n", err, data))
 	}
 }
-
 
 // TestGetProfileNameBySN
 // Acceptance test ->
@@ -43,13 +44,13 @@ func TestGetProfileByName(t *testing.T) {
 // ?filter=serialNumber matches '2M25090RMW'&sort=name:asc
 func TestGetProfileBySN(t *testing.T) {
 	var (
-		d *OVTest
-		c *OVClient
+		d          *OVTest
+		c          *OVClient
 		testSerial string
 	)
 	if os.Getenv("ONEVIEW_TEST_ACCEPTANCE") == "true" {
 		d, c = getTestDriverA()
-		testSerial  = d.Tc.GetTestData(d.Env, "SerialNumber").(string)
+		testSerial = d.Tc.GetTestData(d.Env, "SerialNumber").(string)
 		if c == nil {
 			t.Fatalf("Failed to execute getTestDriver() ")
 		}
@@ -63,9 +64,9 @@ func TestGetProfileBySN(t *testing.T) {
 
 	} else {
 		d, c = getTestDriverU()
-		testSerial  = d.Tc.GetTestData(d.Env, "SerialNumber").(string)
+		testSerial = d.Tc.GetTestData(d.Env, "SerialNumber").(string)
 		data, err := c.GetProfileBySN(testSerial)
-		assert.Error(t,err, fmt.Sprintf("ALL ok, no error, caught as expected: %s,%+v\n",err, data))
+		assert.Error(t, err, fmt.Sprintf("ALL ok, no error, caught as expected: %s,%+v\n", err, data))
 	}
 }
 
@@ -80,7 +81,7 @@ func TestGetProfiles(t *testing.T) {
 		if c == nil {
 			t.Fatalf("Failed to execute getTestDriver() ")
 		}
-		data, err := c.GetProfiles("","")
+		data, err := c.GetProfiles("", "")
 		assert.NoError(t, err, "GetProfiles threw error -> %s, %+v\n", err, data)
 
 		data, err = c.GetProfiles("", "name:asc")
@@ -88,8 +89,8 @@ func TestGetProfiles(t *testing.T) {
 
 	} else {
 		_, c = getTestDriverU()
-		data, err := c.GetProfiles("","")
-		assert.Error(t,err, fmt.Sprintf("ALL ok, no error, caught as expected: %s,%+v\n", err, data))
+		data, err := c.GetProfiles("", "")
+		assert.Error(t, err, fmt.Sprintf("ALL ok, no error, caught as expected: %s,%+v\n", err, data))
 	}
 }
 
@@ -97,8 +98,8 @@ func TestGetProfiles(t *testing.T) {
 // test create profile
 func TestCreateProfileFromTemplate(t *testing.T) {
 	var (
-		d *OVTest
-		c *OVClient
+		d                *OVTest
+		c                *OVClient
 		testHostName     string
 		testBladeSerial  string
 		testTemplateName string
@@ -110,21 +111,40 @@ func TestCreateProfileFromTemplate(t *testing.T) {
 		if c == nil {
 			t.Fatalf("Failed to execute getTestDriver() ")
 		}
-		testHostName     = d.Tc.GetTestData(d.Env, "HostName").(string)
-		testBladeSerial  = d.Tc.GetTestData(d.Env, "FreeBladeSerialNumber").(string)
+		testHostName = d.Tc.GetTestData(d.Env, "HostName").(string)
+		testBladeSerial = d.Tc.GetTestData(d.Env, "FreeBladeSerialNumber").(string)
 		testTemplateName = d.Tc.GetTestData(d.Env, "TemplateProfile").(string)
 
-		testBlades, _    = c.GetServerHardwareList([]string{fmt.Sprintf("serialNumber matches '%s'", testBladeSerial)}, "name:asc")
+		testBlades, _ = c.GetServerHardwareList([]string{fmt.Sprintf("serialNumber matches '%s'", testBladeSerial)}, "name:asc")
 		assert.True(t, (len(testBlades.Members) > 0), "Did not get any blades from server hardware list")
 
 		testTemplate, _ = c.GetProfileByName(testTemplateName)
-		assert.Equal(t, testTemplateName, testTemplate.Name, fmt.Sprintf("Problem getting template name, %+v", testTemplate ))
+		assert.Equal(t, testTemplateName, testTemplate.Name, fmt.Sprintf("Problem getting template name, %+v", testTemplate))
 
-		err             := c.CreateProfileFromTemplate(testHostName, testTemplate, testBlades.Members[0])
-		assert.NoError(t, err, "CreateProfileFromTemplate error -> %s", err)
+		// get the test profile that was created with testHostname
+		testProfile, err := c.GetProfileByName(testHostName)
+		assert.NoError(t, err, "CreateProfileFromTemplate get the server profile error -> %s", err)
 
-		err             = c.CreateProfileFromTemplate(testHostName, testTemplate, testBlades.Members[0])
-		assert.Error(t, err, "CreateProfileFromTemplate should error because a template already exist, err-> %s", err)
+		if len(testBlades.Members) > 0 && testProfile.URI == "" {
+			err := c.CreateProfileFromTemplate(testHostName, testTemplate, testBlades.Members[0])
+			assert.NoError(t, err, "CreateProfileFromTemplate error -> %s", err)
+
+			err = c.CreateProfileFromTemplate(testHostName, testTemplate, testBlades.Members[0])
+			assert.Error(t, err, "CreateProfileFromTemplate should error because a template already exist, err-> %s", err)
+
+		}
+
+		// get the server hardware associated with that test profile
+		testBlade, err := c.GetServerHardware(testProfile.ServerHardwareURI)
+		assert.NoError(t, err, "CreateProfileFromTemplate call to GetServerHardware got error -> %s", err)
+
+		// power on the server, and leave it in that state
+		var pt *PowerTask
+		pt = pt.NewPowerTask(testBlade)
+		pt.Timeout = 46 // timeout is 20 sec
+		log.Info("------- Setting Power to On")
+		err = pt.PowerExecutor(P_ON)
+		assert.NoError(t, err, "PowerExecutor threw no errors -> %s", err)
 	}
 
 }
@@ -133,9 +153,9 @@ func TestCreateProfileFromTemplate(t *testing.T) {
 // should not delete a profile that doesn't exist
 func TestDeleteProfileNotFound(t *testing.T) {
 	var (
-		c *OVClient
-		testProfileName  = "fake_profile_doesnt_exist"
-		testProfile      ServerProfile
+		c               *OVClient
+		testProfileName = "fake_profile_doesnt_exist"
+		testProfile     ServerProfile
 	)
 	if os.Getenv("ONEVIEW_TEST_ACCEPTANCE") == "true" {
 		_, c = getTestDriverA()
@@ -143,44 +163,44 @@ func TestDeleteProfileNotFound(t *testing.T) {
 			t.Fatalf("Failed to execute getTestDriver() ")
 		}
 
-		err             := c.DeleteProfile(testProfileName)
+		err := c.DeleteProfile(testProfileName)
 		assert.NoError(t, err, "DeleteProfile err-> %s", err)
 
 		testProfile, err = c.GetProfileByName(testProfileName)
 		assert.NoError(t, err, "GetProfileByName with deleted profile -> %+v", err)
-		assert.Equal(t, "", testProfile.Name, fmt.Sprintf("Problem getting template name, %+v", testProfile ))
+		assert.Equal(t, "", testProfile.Name, fmt.Sprintf("Problem getting template name, %+v", testProfile))
 	} else {
 		_, c = getTestDriverU()
 		err := c.DeleteProfile(testProfileName)
-		assert.Error(t,err, fmt.Sprintf("ALL ok, no error, caught as expected: %s,%+v\n", err, testProfile))
+		assert.Error(t, err, fmt.Sprintf("ALL ok, no error, caught as expected: %s,%+v\n", err, testProfile))
 	}
 }
 
 // test DeleteProfile
 func TestDeleteProfile(t *testing.T) {
 	var (
-		d *OVTest
-		c *OVClient
-		testProfileName  string
-		testProfile      ServerProfile
+		d               *OVTest
+		c               *OVClient
+		testProfileName string
+		testProfile     ServerProfile
 	)
 	if os.Getenv("ONEVIEW_TEST_ACCEPTANCE") == "true" {
 		d, c = getTestDriverA()
 		if c == nil {
 			t.Fatalf("Failed to execute getTestDriver() ")
 		}
-		testProfileName  = d.Tc.GetTestData(d.Env, "HostName").(string)
+		testProfileName = d.Tc.GetTestData(d.Env, "HostName").(string)
 
-		err             := c.DeleteProfile(testProfileName)
+		err := c.DeleteProfile(testProfileName)
 		assert.NoError(t, err, "DeleteProfile err-> %s", err)
 
 		testProfile, err = c.GetProfileByName(testProfileName)
 		assert.NoError(t, err, "GetProfileByName with deleted profile -> %+v", err)
-		assert.Equal(t, "", testProfile.Name, fmt.Sprintf("Problem getting template name, %+v", testProfile ))
+		assert.Equal(t, "", testProfile.Name, fmt.Sprintf("Problem getting template name, %+v", testProfile))
 	} else {
 		_, c = getTestDriverU()
 		err := c.DeleteProfile("footest")
-		assert.Error(t,err, fmt.Sprintf("ALL ok, no error, caught as expected: %s,%+v\n", err, testProfile))
+		assert.Error(t, err, fmt.Sprintf("ALL ok, no error, caught as expected: %s,%+v\n", err, testProfile))
 	}
 
 }

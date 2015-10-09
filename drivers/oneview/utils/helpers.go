@@ -1,9 +1,9 @@
-package rest
+package utils
 
 import "strings"
 
 // Sanatize ...
-func (c *Client) Sanatize(s string) string {
+func Sanatize(s string) string {
 	if strings.LastIndex(s, "/") > 0 {
 		s = strings.Trim(s, "/")
 	}

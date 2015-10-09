@@ -1,14 +1,16 @@
 package oneview
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"time"
 
 	"github.com/codegangsta/cli"
 	"github.com/docker/machine/drivers"
-	"github.com/docker/machine/drivers/oneview/ov"
 	"github.com/docker/machine/drivers/oneview/icsp"
+	"github.com/docker/machine/drivers/oneview/ov"
 	"github.com/docker/machine/log"
 	"github.com/docker/machine/ssh"
 	"github.com/docker/machine/state"
@@ -17,13 +19,20 @@ import (
 // Driver OneView driver structure
 type Driver struct {
 	*drivers.BaseDriver
+	ClientICSP     *icsp.ICSPClient
+	ClientOV       *ov.OVClient
+	IloUser        string
+	IloPassword    string
+	IloPort        int
+	OSBuildPlan    string
 	SSHUser        string
 	SSHPort        int
 	SSHPublicKey   string
-	ClientICSP     *icsp.ICSPClient
-	ClientOV       *ov.OVClient
 	ServerTemplate string
-	OSBuildPlan    string
+	PublicSlotID   int
+	Profile        ov.ServerProfile
+	Hardware       ov.ServerHardware
+	Server         icsp.Server
 }
 
 const (
@@ -39,16 +48,6 @@ func init() {
 
 // GetCreateFlags registers the flags this driver adds to
 // "docker hosts create"
-// --oneview-ov-user        : String User to OneView
-// --oneview-ov-password    : String Password to OneView
-// --oneview-ov-endpoint    : String url end point, base path
-//
-// --oneview-icsp-user      : String User to ICSP
-// --oneview-icsp-password  : String Password to ICSP
-// --oneview-icsp-endpoint  : String url end point, base path
-//
-// --oneview-sslverify      : Bool false means no https verification
-// --oneview-apiversion     : Int version of api to use 120 is default
 //
 func GetCreateFlags() []cli.Flag {
 	return []cli.Flag{
@@ -114,7 +113,7 @@ func GetCreateFlags() []cli.Flag {
 		cli.StringFlag{
 			Name:   "oneview-ssh-user",
 			Usage:  "OneView build plan ssh user account",
-			Value:  "root",
+			Value:  "docker",
 			EnvVar: "ONEVIEW_SSH_USER",
 		},
 		cli.IntFlag{
@@ -134,6 +133,30 @@ func GetCreateFlags() []cli.Flag {
 			Usage:  "OneView ICSP OS Build plan to use for OS provisioning, see ICS OS Plan for setup.",
 			Value:  "RHEL71_DOCKER_1.8",
 			EnvVar: "ONEVIEW_OS_PLAN",
+		},
+		cli.StringFlag{
+			Name:   "oneview-ilo-user",
+			Usage:  "ILO User id that is used during ICSP server creation.",
+			Value:  "docker",
+			EnvVar: "ONEVIEW_ILO_USER",
+		},
+		cli.StringFlag{
+			Name:   "oneview-ilo-password",
+			Usage:  "ILO password that is used during ICSP server creation.",
+			Value:  "",
+			EnvVar: "ONEVIEW_ILO_PASSWORD",
+		},
+		cli.IntFlag{
+			Name:   "oneview-ilo-port",
+			Usage:  "optional ILO port to use.",
+			Value:  443,
+			EnvVar: "ONEVIEW_ILO_PORT",
+		},
+		cli.IntFlag{
+			Name:   "oneview-public-slotid",
+			Usage:  "optional slot id of the public interface, ie; ethX where X is the id.",
+			Value:  1,
+			EnvVar: "ONEVIEW_PUBLIC_SLOTID",
 		},
 	}
 }
@@ -166,32 +189,85 @@ func (d *Driver) GetSSHUsername() string {
 func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	log.Debug("SetConfigFromFlags...")
 
-	d.ClientICSP = d.ClientICSP.NewICSPClient( flags.String("oneview-icsp-user"),
-																						 flags.String("oneview-icsp-password"),
-																						 flags.String("oneview-icsp-domain"),
-																						 flags.String("oneview-icsp-endpoint"),
-																						 flags.Bool("oneview-sslverify"),
-																						 flags.Int("oneview-apiversion"))
+	var icsp_version, ov_version int
+	switch flags.Int("oneview-apiversion") {
+	case 120:
+		icsp_version = 108
+		ov_version = 120
+	case 200:
+		icsp_version = 108
+		ov_version = 200
+	default:
+		icsp_version = 108
+		ov_version = 120
+	}
 
-	d.ClientOV = d.ClientOV.NewOVClient( flags.String("oneview-ov-user"),
-																			 flags.String("oneview-ov-password"),
-																			 flags.String("oneview-ov-domain"),
-																			 flags.String("oneview-ov-endpoint"),
-																			 flags.Bool("oneview-sslverify"),
-																			 flags.Int("oneview-apiversion"))
+	d.ClientICSP = d.ClientICSP.NewICSPClient(flags.String("oneview-icsp-user"),
+		flags.String("oneview-icsp-password"),
+		flags.String("oneview-icsp-domain"),
+		flags.String("oneview-icsp-endpoint"),
+		flags.Bool("oneview-sslverify"),
+		icsp_version)
+
+	d.ClientOV = d.ClientOV.NewOVClient(flags.String("oneview-ov-user"),
+		flags.String("oneview-ov-password"),
+		flags.String("oneview-ov-domain"),
+		flags.String("oneview-ov-endpoint"),
+		flags.Bool("oneview-sslverify"),
+		ov_version)
+
+	d.IloUser = flags.String("oneview-ilo-user")
+	d.IloPassword = flags.String("oneview-ilo-password")
+	d.IloPort = flags.Int("oneview-ilo-port")
+
+	d.PublicSlotID = flags.Int("oneview-public-slotid")
 
 	d.SSHUser = flags.String("oneview-ssh-user")
 	d.SSHPort = flags.Int("oneview-ssh-port")
 
 	d.ServerTemplate = flags.String("oneview-server-template")
 	d.OSBuildPlan = flags.String("oneview-os-plan")
+
+	d.SwarmMaster = flags.Bool("swarm-master")
+	d.SwarmHost = flags.String("swarm-host")
+	d.SwarmDiscovery = flags.String("swarm-discovery")
+
 	// TODO : we should verify settings for each client
+
+	// check for the ov endpoint
+	if d.ClientOV.Endpoint == "" {
+		return errors.New("Missing option --oneview-ov-endpoint or environment ONEVIEW_OV_ENDPOINT")
+	}
+	// check for the icsp endpoint
+	if d.ClientICSP.Endpoint == "" {
+		return errors.New("Missing option --oneview-icsp-endpoint or environment ONEVIEW_ICSP_ENDPOINT")
+	}
+	// check for the template name
+	if d.ServerTemplate == "" {
+		return errors.New("Missing option --oneview-server-template or environment ONEVIEW_SERVER_TEMPLATE")
+	}
 	return nil
 }
 
 // PreCreateCheck - pre create check
-func (d *Driver) PreCreateCheck() error {
+func (d *Driver) PreCreateCheck() (err error) {
 	log.Debug("PreCreateCheck...")
+	// verify you can connect to ov
+	ovVersion, err := d.ClientOV.GetAPIVersion()
+	if err != nil {
+		return err
+	}
+	if ovVersion.CurrentVersion <= 0 {
+		return fmt.Errorf("Unable to get a valid version from OneView,  %+v\n", ovVersion)
+	}
+	// verify you can connect to icsp
+	icspVersion, err := d.ClientICSP.GetAPIVersion()
+	if err != nil {
+		return err
+	}
+	if icspVersion.CurrentVersion <= 0 {
+		return fmt.Errorf("Unable to get a valid version from ICsp,  %+v\n", icspVersion)
+	}
 	return nil
 }
 
@@ -204,6 +280,85 @@ func (d *Driver) Create() error {
 
 	log.Debugf("ICSP Endpoint is: %s", d.ClientICSP.Endpoint)
 	log.Debugf("OV Endpoint is: %s", d.ClientOV.Endpoint)
+	// create the server profile in oneview, we need a hostname and a template name
+
+	log.Debugf("***> CreateMachine")
+	// create d.Hardware and d.Profile
+	if err := d.ClientOV.CreateMachine(d.MachineName, d.ServerTemplate); err != nil {
+		return err
+	}
+
+	if err := d.getBlade(); err != nil {
+		return err
+	}
+
+	// power on the server, and leave it in that state
+	if err := d.Hardware.PowerOn(); err != nil {
+		return err
+	}
+
+	// add the server to icsp, TestCreateServer
+	// apply a build plan, TestApplyDeploymentJobs
+	var sp *icsp.CustomServerAttributes
+	sp = sp.New()
+	sp.Set("docker_user", d.SSHUser)
+	sp.Set("public_key", d.SSHPublicKey)
+	// TODO: make a util for this
+	if len(os.Getenv("proxy_enable")) > 0 {
+		sp.Set("proxy_enable", os.Getenv("proxy_enable"))
+	} else {
+		sp.Set("proxy_enable", "false")
+	}
+
+	strProxy := os.Getenv("proxy_config")
+	sp.Set("proxy_config", strProxy)
+
+	sp.Set("docker_hostname", d.MachineName+"-@server_name@")
+	// interface
+	sp.Set("interface", fmt.Sprintf("eno%d", 50)) // TODO: what argument should we call 50 besides slotid ??
+
+	cs := icsp.CustomizeServer{
+		HostName:         d.MachineName,                    // machine-rack-enclosure-bay
+		SerialNumber:     d.Hardware.SerialNumber.String(), // get it
+		ILoUser:          d.IloUser,
+		IloPassword:      d.IloPassword,
+		IloIPAddress:     d.Hardware.MpIpAddress,
+		IloPort:          d.IloPort,
+		OSBuildPlan:      d.OSBuildPlan,  // name of the OS build plan
+		PublicSlotID:     d.PublicSlotID, // this is the slot id of the public interface
+		ServerProperties: sp,
+	}
+	// create d.Server and apply a build plan and configure the custom attributes
+	if err := d.ClientICSP.CustomizeServer(cs); err != nil {
+		return err
+	}
+
+	ip, err := d.GetIP()
+	if err != nil {
+		return err
+	}
+	d.IPAddress = ip
+
+	// use ssh to set keys, and test ssh
+	sshClient, err := d.getLocalSSHClient()
+	if err != nil {
+		return err
+	}
+
+	pubKey, err := ioutil.ReadFile(d.publicSSHKeyPath())
+	if err != nil {
+		return err
+	}
+
+	if out, err := sshClient.Output(fmt.Sprintf(
+		"printf '%%s' '%s' | tee /home/%s/.ssh/authorized_keys",
+		string(pubKey),
+		d.GetSSHUsername(),
+	)); err != nil {
+		log.Error(out)
+		return err
+	}
+	log.Infof("%s, Completed all create steps", d.DriverName())
 
 	return nil
 }
@@ -220,68 +375,193 @@ func (d *Driver) GetURL() (string, error) {
 
 // GetIP - get server host or ip address
 // TODO: we need to get ip of server from icsp or ov??
+// currently the only way i can see to get this is with sudo ifconfig|grep inet
 func (d *Driver) GetIP() (string, error) {
 	log.Debug("GetIP...")
-	if d.ClientICSP.Endpoint == "" {
+	// get the blade for this driver
+	if err := d.getBlade(); err != nil {
+		return "", err
+	}
+	sPublicIPv4, err := d.Server.GetPublicIPV4()
+	if err != nil {
+		return "", err
+	}
+	if sPublicIPv4 == "" {
 		return "", fmt.Errorf("IP address is not set")
 	}
-	return d.ClientICSP.Endpoint, nil
+	return sPublicIPv4, nil
 }
 
 // GetState - get the running state of the target machine
 func (d *Driver) GetState() (state.State, error) {
 	log.Debug("GetState...")
-	//  addr := fmt.Sprintf("%s:%d", d.IPAddress, d.SSHPort)
-	//  _, err := net.DialTimeout("tcp", addr, defaultTimeout)
-	//  var st state.State
-	//  if err != nil {
-	//    st = state.Stopped
-	//  } else {
-	//    st = state.Running
-	//  }
-	return state.Stopped, nil
+
+	// get the blade for this driver
+	if err := d.getBlade(); err != nil {
+		return state.Error, err
+	}
+	if icsp.PROVISIONING.Equal(d.Server.OpswLifecycle) {
+		return state.Starting, nil
+	}
+	if icsp.UNPROVISIONED.Equal(d.Server.OpswLifecycle) ||
+		icsp.PRE_UNPROVISIONED.Equal(d.Server.OpswLifecycle) {
+		return state.Stopping, nil
+	}
+	if icsp.DEACTIVATED.Equal(d.Server.OpswLifecycle) {
+		return state.Stopped, nil
+	}
+	if icsp.PROVISION_FAILED.Equal(d.Server.OpswLifecycle) {
+		return state.Error, nil
+	}
+	// use power state to determine status
+	ps, err := d.Hardware.GetPowerState()
+	if err != nil {
+		return state.Error, err
+	}
+	switch ps {
+	case ov.P_ON:
+		return state.Running, nil
+	case ov.P_OFF:
+		return state.Stopped, nil
+	case ov.P_UKNOWN:
+		return state.Error, nil
+	default:
+		return state.Error, nil
+	}
+	return state.None, nil
+
 }
 
 // Start - start the docker machine target
 func (d *Driver) Start() error {
-	log.Debug("Start...")
-	return fmt.Errorf("oneview driver does not support start")
+	log.Infof("Starting ... %s", d.MachineName)
+
+	// get the blade for this driver
+	if err := d.getBlade(); err != nil {
+		return err
+	}
+
+	// power on the server, and leave it in that state
+	if err := d.Hardware.PowerOn(); err != nil {
+		return err
+	}
+	// implement icsp check for is in maintenance mode or started
+	isManaged, err := d.ClientICSP.IsServerManaged(d.Hardware.SerialNumber.String())
+	if err != nil {
+		return err
+	}
+	if !isManaged {
+		return errors.New("Server was started but not ready, check icsp status")
+	}
+	return nil
 }
 
 // Stop - stop the docker machine target
 func (d *Driver) Stop() error {
 	log.Debug("Stop...")
-	return fmt.Errorf("oneview driver does not support stop")
+	log.Infof("Stop ... %s", d.MachineName)
+	// gracefully attempt to stop the os
+
+	if _, err := drivers.RunSSHCommandFromDriver(d, "sudo shutdown -P now"); err != nil {
+		log.Warnf("Problem shutting down gracefully : %s", err)
+	}
+
+	// get the blade for this driver
+	if err := d.getBlade(); err != nil {
+		return err
+	}
+
+	// power on the server, and leave it in that state
+	if err := d.Hardware.PowerOff(); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Remove - remove the docker machine target
 //    Should remove the ICSP provisioned plan and the Server Profile from OV
 func (d *Driver) Remove() error {
 	log.Debug("Remove...")
+	// remove the ssh keys
+	if err := d.deleteKeyPair(); err != nil {
+		return err
+	}
+	if err := d.Stop(); err != nil {
+		return err
+	}
+	if err := d.getBlade(); err != nil {
+		return err
+	}
+	// destroy the server in icsp
+	isDeleted, err := d.ClientICSP.DeleteServer(d.Server.MID)
+	if err != nil {
+		return err
+	}
+	if !isDeleted {
+		return fmt.Errorf("Unable to delete the server from icsp : %s, %s", d.MachineName, d.Server.MID)
+	}
+	// delete the server profile in ov : TestDeleteProfile
+	t, err := d.ClientOV.SubmitDeleteProfile(d.Profile)
+	err = t.Wait()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 // Restart - restart the target machine
 func (d *Driver) Restart() error {
 	log.Debug("Restarting...")
-
-	return nil
+	if err := d.Stop(); err != nil {
+		return err
+	}
+	return d.Start()
 }
 
 // Kill - kill the docker machine
 func (d *Driver) Kill() error {
 	log.Debug("Killing...")
-
+	//TODO: implement power off , is there a force?
 	return nil
 }
 
 // publicSSHKeyPath - get the path to public ssh key
 func (d *Driver) publicSSHKeyPath() string {
 	log.Debug("publicSSHKeyPath...")
-	return ""
+	return d.GetSSHKeyPath() + ".pub"
 }
 
 // /////////  HELPLERS /////////////
+
+func (d *Driver) getBlade() (err error) {
+	log.Debug("In getBlade()")
+
+	d.Profile, err = d.ClientOV.GetProfileByName(d.MachineName)
+	if err != nil {
+		return err
+	}
+
+	log.Debugf("***> check if we got a profile")
+	if d.Profile.URI.IsNil() {
+		err = fmt.Errorf("Attempting to get machine profile information, unable to find machine in oneview: %s", d.MachineName)
+		return err
+	}
+
+	// power on the server
+	// get the server hardware associated with that test profile
+	log.Debugf("***> GetServerHardware")
+	d.Hardware, err = d.ClientOV.GetServerHardware(d.Profile.ServerHardwareURI)
+	if d.Hardware.URI.IsNil() {
+		err = fmt.Errorf("Attempting to get machine blade information, unable to find machine: %s", d.MachineName)
+		return err
+	}
+	// get an icsp server
+	d.Server, err = d.ClientICSP.GetServerBySerialNumber(d.Hardware.SerialNumber.String())
+	if err != nil {
+		return err
+	}
+	return err
+}
 
 // createKeyPair - generate key files needed
 func (d *Driver) createKeyPair() error {
@@ -298,4 +578,28 @@ func (d *Driver) createKeyPair() error {
 	log.Debugf("created keys => %s", string(publicKey))
 	d.SSHPublicKey = string(publicKey)
 	return nil
+}
+
+// deleteKeyPair
+func (d *Driver) deleteKeyPair() error {
+	if err := os.Remove(d.GetSSHKeyPath()); err != nil {
+		return err
+	}
+	if err := os.Remove(d.GetSSHKeyPath() + ".pub"); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (d *Driver) getLocalSSHClient() (ssh.Client, error) {
+	sshAuth := &ssh.Auth{
+		Passwords: []string{"docker"},
+		Keys:      []string{d.GetSSHKeyPath()},
+	}
+	sshClient, err := ssh.NewNativeClient(d.GetSSHUsername(), d.IPAddress, d.SSHPort, sshAuth)
+	if err != nil {
+		return nil, err
+	}
+
+	return sshClient, nil
 }

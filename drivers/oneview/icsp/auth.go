@@ -12,14 +12,6 @@ import (
 // URLEndPoint export this constant
 const URLEndPointSession = "/rest/login-sessions"
 
-// AuthHeader Marshal a json into a auth header
-/*type AuthHeader struct {
-	ContentType string `json:"Content-Type,omitempty"`
-	XAPIVersion int    `json:"X-API-Version,omitempty"`
-	Auth        string `json:"auth,omitempty"`
-}
-*/
-
 // GetAuthHeaderMap Generate an auth Header map ...
 func (c *ICSPClient) GetAuthHeaderMap() map[string]string {
 	return map[string]string{
