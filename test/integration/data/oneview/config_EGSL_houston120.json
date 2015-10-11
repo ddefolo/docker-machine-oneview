@@ -40,21 +40,21 @@
         "IcspName2" : "IC04-HOUEGSL-C7000-04-4",
         "IloIPAddress":  "16.85.0.55",
         "TemplateProfile": "DOCKER_1.8_HOUSTON120_TEMPLATE",
-        "SerialNumber": "VCGHJL9004",
+        "SerialNumber": "VCGADVT00Z",
         "UsedBladeName": "HOUEGSL-C7000-04, bay 4",
-        "ServerHardwareURI": "/rest/server-hardware/30373237-3132-4D32-3235-303930524E30",
+        "ServerHardwareURI": "/rest/server-hardware/30373237-3132-4D32-3235-333830575437",
         "ServerProfileName": "houegsl-c7000-04-04",
         "HardwareTypeURI": "/rest/server-hardware-types/1A1EBD9A-6ABE-4D96-BB9C-E9F39876BD3E",
         "GroupURI": "/rest/enclosure-groups/9bf6f6b2-abf5-4875-b72c-4cb6e744691b",
         "OSBuildPlan":"RHEL71_DOCKER_1.8"
       },
       "expects_data": {
-        "MACAddress": "D6:6D:EC:10:00:0A",
-        "CurrentVersion": 200,
+        "MACAddress": "A6:3B:44:70:00:71",
+        "CurrentVersion": 120,
         "MinimumVersion": 1,
         "FakeData": "foo",
         "IcspName2" : "IC04-HOUEGSL-C7000-04-4",
-        "SerialNumber": "2M25090RN0"
+        "SerialNumber": "2M25380WT7"
       }
     },
     {
