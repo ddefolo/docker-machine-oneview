@@ -33,6 +33,7 @@
       "enabled": true,
       "test_data": {
         "HostName": "docker_machine_test01",
+        "FreeICSPSerialNumber" : "VCGADVT01T",
         "FreeBladeSerialNumber" : "2M25380WT7",
         "FreeBladeName" : "HOUEGSL-C7000-05, bay 6",
         "FreeHostName": "houegsl-c7000-05-ilo06",
