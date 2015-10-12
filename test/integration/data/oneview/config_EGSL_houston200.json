@@ -33,7 +33,7 @@
       "enabled": true,
       "test_data": {
         "HostName": "docker_machine_test01",
-        "FreeICSPSerialNumber" : "VCGADVT01T",
+        "FreeICSPSerialNumber" : "VCGHJL900C",
         "FreeBladeSerialNumber" : "2M25090RMS",
         "FreeBladeName" : "HOUEGSL-C7000-04, bay 5",
         "FreeHostName": "houegsl-c7000-04-ilo05",
@@ -41,7 +41,7 @@
         "IcspName2" : "IC04-HOUEGSL-C7000-04-4",
         "IloIPAddress":  "16.85.0.34",
         "TemplateProfile": "docker1.8_server_template",
-        "SerialNumber": "VCGHJL9004",
+        "SerialNumber": "VCGHJL900C",
         "UsedBladeName": "HOUEGSL-C7000-04, bay 4",
         "ServerHardwareURI": "/rest/server-hardware/30373237-3132-4D32-3235-303930524D53",
         "ServerProfileName": "houegsl-c7000-04-04",
@@ -55,7 +55,7 @@
         "MinimumVersion": 1,
         "FakeData": "foo",
         "IcspName2" : "IC04-HOUEGSL-C7000-04-4",
-        "SerialNumber": "2M25090RN0"
+        "SerialNumber": "2M25090RMS"
       }
     },
     {
