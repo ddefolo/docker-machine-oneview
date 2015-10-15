@@ -21,14 +21,30 @@ Create machines using HP OneView API 1.20
 
 ### Setup ICsp boot image
 
-Provisioning an operating system onto the allocated hardware that this driver will create requires us to have a working Insight Control server provisioning (ICsp) OS build plan (OSbp) created.
+Provisioning an operating system onto the allocated hardware that this driver will create requires us to have a working Insight Control server provisioning (ICsp) OS build plan (OSbp) created.  In addition the ICsp server should have dhcpv4 setup so that public interfaces for the server receive a routable ip address at startup.
 
-1. Use one of the standard RedHat Linux 7.1 boot images.
-2. The boot image can be named anything, but this driver will use RHEL71_DOCKER_1.8 for the default.  If you want an alternate name, please make sure to pass the --oneview-os-plan option with the alternate name.
+1. Use one of the standard RedHat Linux 7.1 boot images located under OS Build Plans (ProLiant OS - RHEL 7.1 x64 Scripted Install).
+2. Choose the action to save a new OS build plan.  The boot image can be named anything, but this driver will use RHEL71_DOCKER_1.8 for the default.  If you want an alternate name, please make sure to pass the --oneview-os-plan option with the alternate name.
 3. On the build plan (step 25) add a bash script step to the next to the last step that is waiting on the server to boot.  The script contents for this step should appear as the following:
-   get script from : drivers/oneview/scripts/docker_os_build_plan.sh
-4. For the OS build plan, setup two custom attributes that will be popluated and passed to the script on step 3.   The first attribute is `docker_user`, and the second attribute is `public_key`.   Note, If a different value for docker_user is desired, then you should set the user and specify the user through the --oneview-ssh-user argument.  This will configure the provisioning to occur with that user.   By default the public key will be generated for each environment you create, this is not configurable.  The script added should have arguments :
+   get script from : ```drivers/oneview/scripts/docker_os_build_plan.sh```
+You can choose to name the build step docker_os_build_prereq or anything that applies for your setup.  The purpose for this script is to prepare the environment with basic user configuration and networking startup.  The script should avoid fully provisioning docker, as this is managed by upstream docker contributions to the docker-machine project.
+4. Configure the parameters for the build step that was added in step 3 to have the following arguments :
 @docker_user@ "@public_key@" @docker_hostname@ "@proxy_config@" "@proxy_enable@" "@interface@"
+
+### Build Step Arguments
+Build step arguments can be controlled by options passed to the docker-machine-oneview driver.  Update these options as needed.
+
+* @docker_user@ - used as the admin account with sudo privilidges to install and run docker commands.
+* @public_key@ - durring docker-machine create a private public key stored in ~/.docker/machine folder will be generated.  This will be the public key configured for @docker_user@
+* @proxy_config@ - these are host machine proxy configuration settings that will be set on the host machine.   Example:
+```
+export proxy_config='http_proxy=https://proxy.company.com:8080/
+https_proxy=https://proxy.company.com:8080/
+no_proxy=/var/run/docker.sock,company.com,localhost,127.0.0.1'
+```
+The string will be stored in /etc/environment for the host machine.
+* @proxy_enable@ when set to true, @proxy_config@ will be saved.
+* @interface@ the name of the network interface that should be used for docker and machine traffic.
 
 ### Extra setup on OS Build Plan
 
@@ -73,15 +89,12 @@ YUMCONF
 
 ## Version supported
 
-The `--oneview-apiversion` option or ONEVIEW_APIVERSION environment variable should be
-set to one of the following version integers.
+This driver will work with specific combinations of HP ICsp and HP OneView.  You can check the version by navigating to http(s)://host/rest/version endpoint.
 
-| api version (see --oneview-apiversion) | HP OneView Version |   HP ICsp Version     |
+| Supported | HP OneView Version |   HP ICsp Version     |
 |----------------------------------------|--------------------|-----------------------|
-| 120                                    | 120                | 108                   |
-| 200                                    | 200                | 108                   |
-
-TODO: we need to re-work this logic to make it automatic.
+| Yes                                    | 120                | 108                   |
+| Yes                                    | 200                | 108                   |
 
 ## Options:
 
@@ -102,7 +115,6 @@ Environment variables and default values:
 | `--oneview-icsp-endpoint`  | String url end point, base path
 |                            |
 | `--oneview-sslverify`      | Bool false means no https verification
-| `--oneview-apiversion`     | Int version of api to use 120 is default
 |                            |
 | `--oneview-ssh-user`       | OneView build plan ssh user account
 | `--oneview-ssh-port`       | OneView build plan ssh host port
@@ -117,12 +129,10 @@ Environment variables and default values:
 
 ## OneView Server Template
 
-* TODO describe the Server Template configuration steps and references.
+* HP OneView 1.2 users.  Server templates are identified as server profiles that have no hardware assignment.  All settings on the server template will be used.
+* HP OneView 2.0+, use server templates under HP OneView Server Templates navigation.
 
-## OneView ICSP OS Build Plan
+## OneView ICsp OS Build Plan
 
-OS build plans will help configure and setup docker OS with OneView so that
-docker is ready to install.  This section will describe how to customize and
-configure docker specific OS server build plans.
-
-* TODO need steps / reference to OS Server build plan.
+* HP ICsp should be configured for OS provisioning with RedHat 7.1.
+* HP ICsp should have DHCP enabled for ip assigments on public and private interfaces.
