@@ -48,7 +48,7 @@ The string will be stored in /etc/environment for the host machine.
 
 ### Extra setup on OS Build Plan
 
-There may be additional network requirements that you should specify so that specific local network requirements are met.  For example, proxy settings.
+There may be additional network requirements that you should specify so that specific local network requirements are met.  For example, internal yum repository settings.
 To work around this, please setup an additional build script that you customize the target os configuration with what will be required for your network.
 
 This step is only needed for systems that need additional setup. Some examples
