@@ -1,5 +1,5 @@
 {
-  "name": "EGSL_HOUSTON120_LAB",
+  "name": "EGSL_HOUSTBIRD200_LAB",
   "cases": [
     {
       "name": "default",
@@ -33,30 +33,29 @@
       "enabled": true,
       "test_data": {
         "HostName": "docker_machine_test01",
-        "FreeICSPSerialNumber" : "VCGADVT01T",
-        "FreeBladeSerialNumber" : "2M25380WT7",
-        "FreeBladeName" : "HOUEGSL-C7000-05, bay 6",
-        "FreeHostName": "houegsl-c7000-05-ilo06",
+        "FreeICSPSerialNumber" : "VCGHJL900C",
+        "FreeBladeSerialNumber" : "2M25090RMS",
+        "FreeBladeName" : "HOUEGSL-C7000-04, bay 5",
+        "FreeHostName": "houegsl-c7000-04-ilo05",
         "IcspName" : "IC04-HOUEGSL-C7000-04-5",
         "IcspName2" : "IC04-HOUEGSL-C7000-04-4",
-        "IloIPAddress":  "16.85.0.55",
-        "TemplateProfile": "DOCKER_1.8_HOUSTON120_TEMPLATE",
-        "SerialNumber": "VCGADVT00Z",
+        "IloIPAddress":  "16.85.0.34",
+        "TemplateProfile": "docker1.8_server_template",
+        "SerialNumber": "VCGHJL900C",
         "UsedBladeName": "HOUEGSL-C7000-04, bay 4",
-        "ServerHardwareURI": "/rest/server-hardware/30373237-3132-4D32-3235-333830575437",
-        "ServerProfileName": "docker_machine_test01",
-        "HardwareTypeURI": "/rest/server-hardware-types/486B9A87-FCEB-4E9E-9E50-B0F54FAA0903",
-        "GroupURI": "/rest/enclosure-groups/120eb19a-2447-4d26-a779-52bb009ff594",
+        "ServerHardwareURI": "/rest/server-hardware/30373237-3132-4D32-3235-303930524D53",
+        "ServerProfileName": "houegsl-c7000-04-04",
+        "HardwareTypeURI": "/rest/server-hardware-types/1A1EBD9A-6ABE-4D96-BB9C-E9F39876BD3E",
+        "GroupURI": "/rest/enclosure-groups/9bf6f6b2-abf5-4875-b72c-4cb6e744691b",
         "OSBuildPlan":"RHEL71_DOCKER_1.8"
       },
       "expects_data": {
-        "IloIPAddress":  "16.85.0.55",
-        "MACAddress": "A6:3B:44:70:00:71",
-        "CurrentVersion": 120,
+        "MACAddress": "D6:6D:EC:10:00:22",
+        "CurrentVersion": 200,
         "MinimumVersion": 1,
         "FakeData": "foo",
         "IcspName2" : "IC04-HOUEGSL-C7000-04-4",
-        "SerialNumber": "2M25380WT7"
+        "SerialNumber": "2M25090RMS"
       }
     },
     {

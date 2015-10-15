@@ -39,6 +39,13 @@ const (
 	defaultTimeout = 1 * time.Second
 )
 
+var (
+	ErrDriverMissingEndPointOptionOV   = errors.New("Missing option --oneview-ov-endpoint or environment ONEVIEW_OV_ENDPOINT")
+	ErrDriverMissingEndPointOptionICSP = errors.New("Missing option --oneview-icsp-endpoint or environment ONEVIEW_ICSP_ENDPOINT")
+	ErrDriverMissingTemplateOption     = errors.New("Missing option --oneview-server-template or environment ONEVIEW_SERVER_TEMPLATE")
+	ErrDriverMissingBuildPlanOption    = errors.New("Missing option --oneview-os-plan or ONEVIEW_OS_PLAN")
+)
+
 func init() {
 	drivers.Register("oneview", &drivers.RegisteredDriver{
 		New:            NewDriver,
@@ -103,12 +110,6 @@ func GetCreateFlags() []cli.Flag {
 			Name:   "oneview-sslverify",
 			Usage:  "SSH private key path",
 			EnvVar: "ONEVIEW_SSLVERIFY",
-		},
-		cli.IntFlag{
-			Name:   "oneview-apiversion",
-			Usage:  "OneView API Version",
-			Value:  120,
-			EnvVar: "ONEVIEW_APIVERSION",
 		},
 		cli.StringFlag{
 			Name:   "oneview-ssh-user",
@@ -189,32 +190,22 @@ func (d *Driver) GetSSHUsername() string {
 func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	log.Debug("SetConfigFromFlags...")
 
-	var icsp_version, ov_version int
-	switch flags.Int("oneview-apiversion") {
-	case 120:
-		icsp_version = 108
-		ov_version = 120
-	case 200:
-		icsp_version = 108
-		ov_version = 200
-	default:
-		icsp_version = 108
-		ov_version = 120
-	}
-
 	d.ClientICSP = d.ClientICSP.NewICSPClient(flags.String("oneview-icsp-user"),
 		flags.String("oneview-icsp-password"),
 		flags.String("oneview-icsp-domain"),
 		flags.String("oneview-icsp-endpoint"),
 		flags.Bool("oneview-sslverify"),
-		icsp_version)
+		1)
 
 	d.ClientOV = d.ClientOV.NewOVClient(flags.String("oneview-ov-user"),
 		flags.String("oneview-ov-password"),
 		flags.String("oneview-ov-domain"),
 		flags.String("oneview-ov-endpoint"),
 		flags.Bool("oneview-sslverify"),
-		ov_version)
+		1)
+
+	d.ClientICSP.RefreshVersion()
+	d.ClientOV.RefreshVersion()
 
 	d.IloUser = flags.String("oneview-ilo-user")
 	d.IloPassword = flags.String("oneview-ilo-password")
@@ -236,16 +227,21 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 
 	// check for the ov endpoint
 	if d.ClientOV.Endpoint == "" {
-		return errors.New("Missing option --oneview-ov-endpoint or environment ONEVIEW_OV_ENDPOINT")
+		return ErrDriverMissingEndPointOptionOV
 	}
 	// check for the icsp endpoint
 	if d.ClientICSP.Endpoint == "" {
-		return errors.New("Missing option --oneview-icsp-endpoint or environment ONEVIEW_ICSP_ENDPOINT")
+		return ErrDriverMissingEndPointOptionICSP
 	}
 	// check for the template name
 	if d.ServerTemplate == "" {
-		return errors.New("Missing option --oneview-server-template or environment ONEVIEW_SERVER_TEMPLATE")
+		return ErrDriverMissingTemplateOption
 	}
+
+	if d.OSBuildPlan == "" {
+		return ErrDriverMissingBuildPlanOption
+	}
+
 	return nil
 }
 
@@ -296,6 +292,10 @@ func (d *Driver) Create() error {
 	if err := d.Hardware.PowerOn(); err != nil {
 		return err
 	}
+	// power off let customization bring the server online
+	if err := d.Hardware.PowerOff(); err != nil {
+		return err
+	}
 
 	// add the server to icsp, TestCreateServer
 	// apply a build plan, TestApplyDeploymentJobs
@@ -318,11 +318,11 @@ func (d *Driver) Create() error {
 	sp.Set("interface", fmt.Sprintf("eno%d", 50)) // TODO: what argument should we call 50 besides slotid ??
 
 	cs := icsp.CustomizeServer{
-		HostName:         d.MachineName,                    // machine-rack-enclosure-bay
-		SerialNumber:     d.Hardware.SerialNumber.String(), // get it
+		HostName:         d.MachineName,                   // machine-rack-enclosure-bay
+		SerialNumber:     d.Profile.SerialNumber.String(), // get it
 		ILoUser:          d.IloUser,
 		IloPassword:      d.IloPassword,
-		IloIPAddress:     d.Hardware.MpIpAddress,
+		IloIPAddress:     d.Hardware.GetIloIPAddress(), // MpIpAddress for v1
 		IloPort:          d.IloPort,
 		OSBuildPlan:      d.OSBuildPlan,  // name of the OS build plan
 		PublicSlotID:     d.PublicSlotID, // this is the slot id of the public interface
@@ -358,7 +358,7 @@ func (d *Driver) Create() error {
 		log.Error(out)
 		return err
 	}
-	log.Infof("%s, Completed all create steps", d.DriverName())
+	log.Infof("%s, Completed all create steps, docker provisioning will continue.", d.DriverName())
 
 	return nil
 }
@@ -426,9 +426,8 @@ func (d *Driver) GetState() (state.State, error) {
 	case ov.P_UKNOWN:
 		return state.Error, nil
 	default:
-		return state.Error, nil
+		return state.None, nil
 	}
-	return state.None, nil
 
 }
 
@@ -556,7 +555,13 @@ func (d *Driver) getBlade() (err error) {
 		return err
 	}
 	// get an icsp server
-	d.Server, err = d.ClientICSP.GetServerBySerialNumber(d.Hardware.SerialNumber.String())
+	if d.Hardware.VirtualSerialNumber.IsNil() {
+		// get the server profile with SerialNumber
+		d.Server, err = d.ClientICSP.GetServerBySerialNumber(d.Hardware.SerialNumber.String())
+	} else {
+		// get the server profile with the VirtualSerialNumber
+		d.Server, err = d.ClientICSP.GetServerBySerialNumber(d.Hardware.VirtualSerialNumber.String())
+	}
 	if err != nil {
 		return err
 	}

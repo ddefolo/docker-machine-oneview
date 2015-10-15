@@ -2,10 +2,10 @@ package ov
 
 import (
 	"os"
-	"strconv"
 
 	"github.com/docker/machine/drivers/oneview/rest"
 	"github.com/docker/machine/drivers/oneview/testconfig"
+	"github.com/docker/machine/log"
 )
 
 //TODO: need to learn a better way of how integration testing works with bats
@@ -57,10 +57,13 @@ func getTestDriverA() (*OVTest, *OVClient) {
 			Domain:   os.Getenv("ONEVIEW_OV_DOMAIN"),
 			Endpoint: os.Getenv("ONEVIEW_OV_ENDPOINT"),
 			// ConfigDir:
-			SSLVerify:  false,
-			APIVersion: strconv.Atoi(os.Getenv("ONEVIEW_APIVERSION")),
-			APIKey:     "none",
+			SSLVerify: false,
+			APIKey:    "none",
 		},
+	}
+	err := ot.Client.RefreshVersion()
+	if err != nil {
+		log.Fatalf("Problem with getting api version refreshed : %+v", err)
 	}
 	// fmt.Println("Setting up test with getTestDriverA")
 	return ot, ot.Client

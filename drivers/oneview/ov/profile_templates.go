@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/docker/machine/drivers/oneview/liboneview"
 	"github.com/docker/machine/drivers/oneview/rest"
 	"github.com/docker/machine/log"
 )
@@ -12,17 +13,48 @@ import (
 // to build the profiles for servers and associate them.
 // we don't operate on a new struct, we simply use the ServerProfile struct
 
+// ProfileTemplatesNotSupported - determine these functions are supported
+func (c *OVClient) ProfileTemplatesNotSupported() bool {
+	var currentversion liboneview.Version
+	var asc liboneview.APISupport
+	currentversion = currentversion.CalculateVersion(c.APIVersion, 108) // force icsp to 108 version since icsp version doesn't matter
+	asc = asc.NewByName("profile_templates.go")
+	if !asc.IsSupported(currentversion) {
+		log.Debugf("ProfileTemplates client version not supported: %+v", currentversion)
+		return true
+	}
+	return false
+}
+
+// IsProfileTemplates - returns true when we should use GetProfileTemplate...
+func (c *OVClient) IsProfileTemplates() bool {
+	return !c.ProfileTemplatesNotSupported()
+}
+
 // get a server profile template by name
 func (c *OVClient) GetProfileTemplateByName(name string) (ServerProfile, error) {
 	var (
 		profile ServerProfile
 	)
-	profiles, err := c.GetProfileTemplates(fmt.Sprintf("name matches '%s'", name), "name:asc")
-	if profiles.Total > 0 {
-		return profiles.Members[0], err
+	// v2 way to get ServerProfile
+	if c.IsProfileTemplates() {
+		profiles, err := c.GetProfileTemplates(fmt.Sprintf("name matches '%s'", name), "name:asc")
+		if profiles.Total > 0 {
+			return profiles.Members[0], err
+		} else {
+			return profile, err
+		}
 	} else {
-		return profile, err
+
+		// v1 way to get a ServerProfile
+		profiles, err := c.GetProfiles(fmt.Sprintf("name matches '%s'", name), "name:asc")
+		if profiles.Total > 0 {
+			return profiles.Members[0], err
+		} else {
+			return profile, err
+		}
 	}
+
 }
 
 // get a server profiles

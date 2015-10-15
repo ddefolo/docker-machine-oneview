@@ -9,14 +9,6 @@ import (
 	"github.com/docker/machine/log"
 )
 
-// firmware additional properties introduced in 200
-// "FirmwareOnly" - Updates the firmware without powering down the server hardware using using HP Smart Update Tools.
-// "FirmwareAndOSDrivers" - Updates the firmware and OS drivers without powering down the server hardware using HP Smart Update Tools.
-// "FirmwareOnlyOfflineMode" - Manages the firmware through HP OneView. Selecting this option requires the server hardware to be powered down.
-type FirmwareOptionv200 struct {
-	FirmwareInstallType string `json:"firmwareInstallType,omitempty"` // Specifies the way a Service Pack for ProLiant (SPP) is installed. This field is used if the 'manageFirmware' field is true. Possible values are
-}
-
 // firmware
 type FirmwareOption struct {
 	FirmwareOptionv200
@@ -44,14 +36,15 @@ type BiosSettings struct {
 	Value string `json:"value,omitempty"` // value
 }
 
-// bios options
+// BiosOption - bios options
 type BiosOption struct {
 	ManageBios         bool           `json:"manageBios,omitempty"`         // "manageBios": false,
 	OverriddenSettings []BiosSettings `json:"overriddenSettings,omitempty"` // "overriddenSettings": []
 }
 
-// ServerProfile , server profile object for ov
+// ServerProfile - server profile object for ov
 type ServerProfile struct {
+	ServerProfilev200
 	Affinity              string              `json:"affinity,omitempty"`         // "affinity": "Bay",
 	AssociatedServer      utils.Nstring       `json:"associatedServer,omitempty"` // "associatedServer": null,
 	Bios                  BiosOption          `json:"bios,omitempty"`             // "bios": {	},
@@ -154,7 +147,7 @@ func (c *OVClient) GetProfileBySN(serialnum string) (ServerProfile, error) {
 	}
 }
 
-// get a server profiles
+// GetProfiles - get a server profiles
 func (c *OVClient) GetProfiles(filter string, sort string) (ServerProfileList, error) {
 	var (
 		uri      = "/rest/server-profiles"
@@ -189,7 +182,28 @@ func (c *OVClient) GetProfiles(filter string, sort string) (ServerProfileList, e
 	return profiles, nil
 }
 
-// submit new profile template
+// GetProfileByURI - get the profile from a uri
+func (c *OVClient) GetProfileByURI(uri utils.Nstring) (ServerProfile, error) {
+	var (
+		profile ServerProfile
+	)
+
+	// refresh login
+	c.RefreshLogin()
+	c.SetAuthHeaderOptions(c.GetAuthHeaderMap())
+	data, err := c.RestAPICall(rest.GET, uri.String(), nil)
+	if err != nil {
+		return profile, err
+	}
+
+	log.Debugf("GetProfileByURI %s", data)
+	if err := json.Unmarshal([]byte(data), &profile); err != nil {
+		return profile, err
+	}
+	return profile, nil
+}
+
+// SubmitNewProfile - submit new profile template
 func (c *OVClient) SubmitNewProfile(p ServerProfile) (t *Task, err error) {
 	log.Infof("Initializing creation of server profile for %s.", p.Name)
 	var (
@@ -220,8 +234,24 @@ func (c *OVClient) SubmitNewProfile(p ServerProfile) (t *Task, err error) {
 // create profile from template
 func (c *OVClient) CreateProfileFromTemplate(name string, template ServerProfile, blade ServerHardware) error {
 	log.Debugf("TEMPLATE : %+v\n", template)
+	var (
+		new_template ServerProfile
+		err          error
+	)
 
-	var new_template = template.Clone()
+	//GET on /rest/server-profile-templates/{id}new-profile
+	if c.IsProfileTemplates() {
+		log.Debugf("getting profile by URI %+v, v2", template.URI)
+		new_template, err = c.GetProfileByURI(template.URI)
+		if err != nil {
+			return err
+		}
+		new_template.Type = "ServerProfileV5"
+		log.Debugf("new_template -> %+v", new_template)
+	} else {
+		log.Debugf("get new_template from clone, v1")
+		new_template = template.Clone()
+	}
 	new_template.ServerHardwareURI = blade.URI
 	new_template.Description += " " + name
 	new_template.Name = name

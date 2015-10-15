@@ -33,6 +33,7 @@
       "enabled": true,
       "test_data": {
         "HostName": "docker_machine_test01",
+        "FreeICSPSerialNumber" : "2M25090RMR",
         "FreeBladeSerialNumber" : "2M25090RMR",
         "FreeBladeName" : "se05, bay 14",
         "FreeHostName": "ezsetupsystem3464a9b​be688",
