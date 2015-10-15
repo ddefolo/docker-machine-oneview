@@ -50,6 +50,7 @@
         "OSBuildPlan":"RHEL71_DOCKER_1.8"
       },
       "expects_data": {
+        "IloIPAddress":  "16.85.0.34",
         "MACAddress": "D6:6D:EC:10:00:22",
         "CurrentVersion": 200,
         "MinimumVersion": 1,
