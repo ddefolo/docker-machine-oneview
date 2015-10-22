@@ -1,0 +1,18 @@
+#!/bin/sh
+set -e
+
+DOCKER_MACHINE_GITURL=https://raw.githubusercontent.com/docker/machine/master/Dockerfile
+DOCKER_FILE_MACHINE="$(git rev-parse --show-toplevel)/.dockerfile.machine"
+
+ARGS=$@
+if [ -z "$ARGS" ]; then
+    ARGS="./..."
+fi
+
+echo $ARGS
+
+if [ -z "$SKIP_BUILD" ] ; then
+    curl -s $DOCKER_MACHINE_GITURL > $DOCKER_FILE_MACHINE
+    docker build -f $DOCKER_FILE_MACHINE -t docker-machine .
+fi
+exec docker run --rm docker-machine godep go test -v -short $ARGS

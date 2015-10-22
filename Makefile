@@ -1,4 +1,4 @@
-.PHONY: validate-dco
+.PHONY: validate
 
 all: validate test build
 
