@@ -39,6 +39,7 @@ const (
 	defaultTimeout = 1 * time.Second
 )
 
+// Error messages
 var (
 	ErrDriverMissingEndPointOptionOV   = errors.New("Missing option --oneview-ov-endpoint or environment ONEVIEW_OV_ENDPOINT")
 	ErrDriverMissingEndPointOptionICSP = errors.New("Missing option --oneview-icsp-endpoint or environment ONEVIEW_ICSP_ENDPOINT")
