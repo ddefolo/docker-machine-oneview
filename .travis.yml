@@ -3,6 +3,7 @@ go:
 - 1.5.1
 install:
 - go get github.com/mattn/goveralls
+- go get -u github.com/golang/lint/golint
 script:
 - make dco
 - make fmt
