@@ -49,17 +49,21 @@ include mk/validate.mk
 
 default: build
 # Build native machine and all drivers
-build: build-machine build-plugins
+# TODO: cleanup build: build-machine build-plugins
+build: godeps build-x
+
+#TODO: cleanup
 # Just build native machine itself
-machine: build-machine
+# machine: build-machine
 # Just build the native plugins
-plugins: build-plugins
+# plugins: build-plugins
 # Build all, cross platform
 cross: build-x
 
 clean: coverage-clean build-clean
 test: dco fmt vet test-short
-validate: dco fmt vet lint test-short test-long
+check: dco fmt vet lint
+validate: check test-short test-long
 install:
 	cp ./bin/docker-machine* /usr/local/bin/
 

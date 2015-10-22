@@ -7,13 +7,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/codegangsta/cli"
-	"github.com/docker/machine/drivers"
-	"github.com/docker/machine/drivers/oneview/icsp"
-	"github.com/docker/machine/drivers/oneview/ov"
-	"github.com/docker/machine/log"
-	"github.com/docker/machine/ssh"
-	"github.com/docker/machine/state"
+	"github.com/docker/machine/libmachine/log"
+	"github.com/docker/machine/libmachine/ssh"
+	"github.com/docker/machine/libmachine/state"
+
+	"github.com/HewlettPackard/oneviwe-golang/icsp"
+	"github.com/HewlettPackard/oneviwe-golang/ov"
 )
 
 // Driver OneView driver structure
@@ -57,104 +56,104 @@ func init() {
 // GetCreateFlags registers the flags this driver adds to
 // "docker hosts create"
 //
-func GetCreateFlags() []cli.Flag {
-	return []cli.Flag{
-		cli.StringFlag{
+func GetCreateFlags() []mcnflag.Flag {
+	return []mcnflag.Flag{
+		mcnflag.StringFlag{
 			Name:   "oneview-ov-user",
 			Usage:  "User Name to OneView Server",
 			Value:  "",
 			EnvVar: "ONEVIEW_OV_USER",
 		},
-		cli.StringFlag{
+		mcnflag.StringFlag{
 			Name:   "oneview-ov-password",
 			Usage:  "Password to OneView Server",
 			Value:  "",
 			EnvVar: "ONEVIEW_OV_PASSWORD",
 		},
-		cli.StringFlag{
+		mcnflag.StringFlag{
 			Name:   "oneview-ov-domain",
 			Usage:  "Domain to OneView Server",
 			Value:  "LOCAL",
 			EnvVar: "ONEVIEW_OV_DOMAIN",
 		},
-		cli.StringFlag{
+		mcnflag.StringFlag{
 			Name:   "oneview-ov-endpoint",
 			Usage:  "OneView Server URL Endpoint",
 			Value:  "",
 			EnvVar: "ONEVIEW_OV_ENDPOINT",
 		},
-		cli.StringFlag{
+		mcnflag.StringFlag{
 			Name:   "oneview-icsp-user",
 			Usage:  "User Name to OneView Insight Controller",
 			Value:  "",
 			EnvVar: "ONEVIEW_ICSP_USER",
 		},
-		cli.StringFlag{
+		mcnflag.StringFlag{
 			Name:   "oneview-icsp-password",
 			Usage:  "Password to OneView Insight Controller",
 			Value:  "",
 			EnvVar: "ONEVIEW_ICSP_PASSWORD",
 		},
-		cli.StringFlag{
+		mcnflag.StringFlag{
 			Name:   "oneview-icsp-domain",
 			Usage:  "Domain to OneView Insight Controller",
 			Value:  "LOCAL",
 			EnvVar: "ONEVIEW_ICSP_DOMAIN",
 		},
-		cli.StringFlag{
+		mcnflag.StringFlag{
 			Name:   "oneview-icsp-endpoint",
 			Usage:  "OneView Insight Controller URL Endpoint",
 			Value:  "",
 			EnvVar: "ONEVIEW_ICSP_ENDPOINT",
 		},
-		cli.BoolFlag{
+		mcnflag.BoolFlag{
 			Name:   "oneview-sslverify",
 			Usage:  "SSH private key path",
 			EnvVar: "ONEVIEW_SSLVERIFY",
 		},
-		cli.StringFlag{
+		mcnflag.StringFlag{
 			Name:   "oneview-ssh-user",
 			Usage:  "OneView build plan ssh user account",
 			Value:  "docker",
 			EnvVar: "ONEVIEW_SSH_USER",
 		},
-		cli.IntFlag{
+		mcnflag.IntFlag{
 			Name:   "oneview-ssh-port",
 			Usage:  "OneView build plan ssh host port",
 			Value:  22,
 			EnvVar: "ONEVIEW_SSH_PORT",
 		},
-		cli.StringFlag{
+		mcnflag.StringFlag{
 			Name:   "oneview-server-template",
 			Usage:  "OneView server template to use for blade provisioning, see OneView Server Template for setup.",
 			Value:  "DOCKER_1.8_OVTEMP",
 			EnvVar: "ONEVIEW_SERVER_TEMPLATE",
 		},
-		cli.StringFlag{
+		mcnflag.StringFlag{
 			Name:   "oneview-os-plan",
 			Usage:  "OneView ICSP OS Build plan to use for OS provisioning, see ICS OS Plan for setup.",
 			Value:  "RHEL71_DOCKER_1.8",
 			EnvVar: "ONEVIEW_OS_PLAN",
 		},
-		cli.StringFlag{
+		mcnflag.StringFlag{
 			Name:   "oneview-ilo-user",
 			Usage:  "ILO User id that is used during ICSP server creation.",
 			Value:  "docker",
 			EnvVar: "ONEVIEW_ILO_USER",
 		},
-		cli.StringFlag{
+		mcnflag.StringFlag{
 			Name:   "oneview-ilo-password",
 			Usage:  "ILO password that is used during ICSP server creation.",
 			Value:  "",
 			EnvVar: "ONEVIEW_ILO_PASSWORD",
 		},
-		cli.IntFlag{
+		mcnflag.IntFlag{
 			Name:   "oneview-ilo-port",
 			Usage:  "optional ILO port to use.",
 			Value:  443,
 			EnvVar: "ONEVIEW_ILO_PORT",
 		},
-		cli.IntFlag{
+		mcnflag.IntFlag{
 			Name:   "oneview-public-slotid",
 			Usage:  "optional slot id of the public interface, ie; ethX where X is the id.",
 			Value:  1,
@@ -187,7 +186,7 @@ func (d *Driver) GetSSHUsername() string {
 	return d.SSHUser
 }
 
-// SetConfigFromFlags - gets the cli configuration flags
+// SetConfigFromFlags - gets the mcnflag configuration flags
 func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	log.Debug("SetConfigFromFlags...")
 
