@@ -45,8 +45,8 @@
         "UsedBladeName": "HOUEGSL-C7000-04, bay 4",
         "ServerHardwareURI": "/rest/server-hardware/30373237-3132-4D32-3235-303930524D53",
         "ServerProfileName": "houegsl-c7000-04-04",
-        "HardwareTypeURI": "/rest/server-hardware-types/1A1EBD9A-6ABE-4D96-BB9C-E9F39876BD3E",
-        "GroupURI": "/rest/enclosure-groups/9bf6f6b2-abf5-4875-b72c-4cb6e744691b",
+        "HardwareTypeURI": "/rest/server-hardware-types/9C0014FB-FCB0-42E1-ADD9-550CC0D4620F",
+        "GroupURI": "/rest/enclosure-groups/156b9f58-c00e-49e3-aa67-39ec7a513178",
         "OSBuildPlan":"RHEL71_DOCKER_1.8"
       },
       "expects_data": {
