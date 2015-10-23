@@ -42,7 +42,7 @@ echo $?
 COMPOSE_FILE=$SCRIPT_HOME/conf/$(echo $ONEVIEW_TEST_DATA | tr '[:upper:]' '[:lower:]').yaml
 if [ ! -f $COMPOSE_FILE ]; then
     echo "Could not find $COMPOSE_FILE to start"
-    return 1
+    exit 1
 fi
 
 
@@ -79,4 +79,5 @@ cat $COMPOSE_FILE|grep container_name|awk -F':' '{print $2}'|sed 's/\s//g' | \
     xargs -i echo {} ./drivers/oneview/ov
 
 cd "${CURRENT_DIR}"
-return 0
+
+exit 0
