@@ -1,4 +1,12 @@
 #!/bin/bash
+USAGEERR=2
+[[ $_ != $0 ]] && USAGEERR=1 || USAGEERR=0
+if [ $USAGEERR -eq 1 ]; then
+  echo "USAGE: source $0"
+  echo ""
+  echo "This script must be sourced"
+  exit 1
+fi
 
 TEMP_DIR=$(dirname $(mktemp -u))
 SCRIPT_HOME="$(dirname $0)"
@@ -42,7 +50,7 @@ echo $?
 COMPOSE_FILE=$SCRIPT_HOME/conf/$(echo $ONEVIEW_TEST_DATA | tr '[:upper:]' '[:lower:]').yaml
 if [ ! -f $COMPOSE_FILE ]; then
     echo "Could not find $COMPOSE_FILE to start"
-    exit 1
+    return 1
 fi
 
 
@@ -80,4 +88,4 @@ cat $COMPOSE_FILE|grep container_name|awk -F':' '{print $2}'|sed 's/\s//g' | \
 
 cd "${CURRENT_DIR}"
 
-exit 0
+return 1
