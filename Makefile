@@ -25,16 +25,6 @@ DOCKER_FILE := .dockerfile.machine
 build: gen-dockerfile
 test: build
 %:
-
-		# setup proxy values
-		# proxy="$(NEWLINE)$(PROXY_CONFIG)"
-		proxy=(echo $(NEWLINE)$(PROXY_CONFIG))
-		echo $proxy
-		sed "s#FROM.*#&$(NEWLINE)$(PROXY_CONFIG)#" $(DOCKER_FILE) > $(DOCKER_FILE).t && mv $(DOCKER_FILE).t $(DOCKER_FILE)
-		sed "s#\s+ENV#ENV#g" $(DOCKER_FILE) > $(DOCKER_FILE).t && mv $(DOCKER_FILE).t $(DOCKER_FILE)
-		# setup workdir and add current folder as /go/src/github.com/$GH_USER/$GH_REPO
-		sed "s#WORKDIR.*#WORKDIR /go/src/github.com/$(GH_USER)/$(GH_REPO)#g" $(DOCKER_FILE) > $(DOCKER_FILE).t && mv $(DOCKER_FILE).t $(DOCKER_FILE)
-		sed "s#ADD.*#ADD . /go/src/github.com/$(GH_USER)/$(GH_REPO)#g" $(DOCKER_FILE) > $(DOCKER_FILE).t && mv $(DOCKER_FILE).t $(DOCKER_FILE)
 		docker build -f $(DOCKER_FILE) -t $(DOCKER_IMAGE_NAME) .
 
 		test -z '$(shell docker ps -a | grep $(DOCKER_CONTAINER_NAME))' || docker rm -f $(DOCKER_CONTAINER_NAME)

@@ -1,7 +1,9 @@
 # use PROXY_CONFIG
 
+PROXY_DOCKER_ENV_FILE := .proxy.docker.env
+
 define DOCKER_HTTPS_PROXY
-ENV HTTPS_PROXY %s\n
+\nENV HTTPS_PROXY %s\n
 endef
 define DOCKER_HTTP_PROXY
 ENV HTTP_PROXY %s\n
@@ -45,14 +47,13 @@ PROXY_CONFIG := $(PROXY_CONFIG) '$(no_proxy)'
 endif
 
 proxy-clean:
-		rm -f .proxy.docker.env
+		rm -f $(PROXY_DOCKER_ENV_FILE)
 
-ifneq ($(PROXY_CONFIG),)
+ifeq ($(PROXY_CONFIG),)
 proxy-config: proxy-clean
 		# generate a
-		printf '$(DOCKER_PROXY_CONFIG)' $(PROXY_CONFIG) > .proxy.docker.env
+		printf '$(DOCKER_PROXY_CONFIG)' $(PROXY_CONFIG) > $(PROXY_DOCKER_ENV_FILE)
 else
 proxy-config: proxy-clean
-		rm -f .proxy.docker.env
-		touch .proxy.docker.env
+		touch $(PROXY_DOCKER_ENV_FILE)
 endif
