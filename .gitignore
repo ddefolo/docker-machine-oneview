@@ -1,5 +1,11 @@
 *.log
-.proxy.env
+.proxy*.env
 .gdbinit
 .atom-gdb.json
 .dockerfile.machine
+docker-machine*
+*.log
+*.iml
+.idea/
+./bin
+cover

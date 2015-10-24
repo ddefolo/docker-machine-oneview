@@ -1,5 +1,5 @@
 # # Plain make targets if not requested inside a container
-PROXY_CONFIG := ENV HTTP_PROXY $(HTTP_PROXY)\\nENV HTTPS_PROXY $(HTTPS_PROXY)\\nENV http_proxy $(http_proxy)\\nENV https_proxy $(https_proxy)\\nENV no_proxy $(no_proxy)
+include mk/utils/dockerfile.mk
 
 godeps:
 		@echo "Pulling required packages"
@@ -22,19 +22,19 @@ DOCKER_FILE_URL := "https://raw.githubusercontent.com/docker/machine/master/Dock
 DOCKER_FILE := .dockerfile.machine
 
 
-build:
+build: gen-dockerfile
 test: build
 %:
-		echo $(HTTP_PROXY)
-		echo $(https_proxy)
-		# get the dockerfile.machine from github.com/docker/machine
-		curl -s $(DOCKER_FILE_URL) > $(DOCKER_FILE)
+
 		# setup proxy values
-		sed -i "s#FROM golang:1.5.1#FROM golang:1.5.1\\n$(PROXY_CONFIG)#g" $(DOCKER_FILE)
-		sed -i "s#\s+ENV#ENV#g" $(DOCKER_FILE)
+		# proxy="$(NEWLINE)$(PROXY_CONFIG)"
+		proxy=(echo $(NEWLINE)$(PROXY_CONFIG))
+		echo $proxy
+		sed "s#FROM.*#&$(NEWLINE)$(PROXY_CONFIG)#" $(DOCKER_FILE) > $(DOCKER_FILE).t && mv $(DOCKER_FILE).t $(DOCKER_FILE)
+		sed "s#\s+ENV#ENV#g" $(DOCKER_FILE) > $(DOCKER_FILE).t && mv $(DOCKER_FILE).t $(DOCKER_FILE)
 		# setup workdir and add current folder as /go/src/github.com/$GH_USER/$GH_REPO
-		sed -i "s#WORKDIR.*#WORKDIR /go/src/github.com/$(GH_USER)/$(GH_REPO)#g" $(DOCKER_FILE)
-		sed -i "s#ADD.*#ADD . /go/src/github.com/$(GH_USER)/$(GH_REPO)#g" $(DOCKER_FILE)
+		sed "s#WORKDIR.*#WORKDIR /go/src/github.com/$(GH_USER)/$(GH_REPO)#g" $(DOCKER_FILE) > $(DOCKER_FILE).t && mv $(DOCKER_FILE).t $(DOCKER_FILE)
+		sed "s#ADD.*#ADD . /go/src/github.com/$(GH_USER)/$(GH_REPO)#g" $(DOCKER_FILE) > $(DOCKER_FILE).t && mv $(DOCKER_FILE).t $(DOCKER_FILE)
 		docker build -f $(DOCKER_FILE) -t $(DOCKER_IMAGE_NAME) .
 
 		test -z '$(shell docker ps -a | grep $(DOCKER_CONTAINER_NAME))' || docker rm -f $(DOCKER_CONTAINER_NAME)
