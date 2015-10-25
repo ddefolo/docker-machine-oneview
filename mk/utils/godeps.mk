@@ -11,7 +11,7 @@ define godeps-get
 endef
 
 define godeps-save
-	godep save $(1);
+	godep save -v $(1);
 endef
 
 define godeps-clean
@@ -45,4 +45,4 @@ godeps-init: godeps-clean
 		$(call godeps-save, $(GO_PACKAGES))
 
 godeps: godeps-init
-godeps: godeps
+godep: godeps

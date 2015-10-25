@@ -9,4 +9,3 @@ docker-machine*
 .idea/
 ./bin
 cover
-vendor/*
