@@ -8,11 +8,12 @@ import (
 	"time"
 
 	"github.com/docker/machine/libmachine/log"
+	"github.com/docker/machine/libmachine/mcnflag"
 	"github.com/docker/machine/libmachine/ssh"
 	"github.com/docker/machine/libmachine/state"
 
-	"github.com/HewlettPackard/oneviwe-golang/icsp"
-	"github.com/HewlettPackard/oneviwe-golang/ov"
+	"github.com/HewlettPackard/oneview-golang/icsp"
+	"github.com/HewlettPackard/oneview-golang/ov"
 )
 
 // Driver OneView driver structure

@@ -1,12 +1,6 @@
 # # Plain make targets if not requested inside a container
 include mk/utils/dockerfile.mk
-
-godeps:
-		@echo "Pulling required packages"
-		go get github.com/docker/machine
-		#TODO : change this once we release and remove the key
-		mkdir -p $(PREFIX)/vendor/go/src
-		git clone git@github.com:HewlettPackard/oneview-golang.git $(PREFIX)/go/src
+include mk/utils/godeps.mk
 
 include Makefile.inc
 ifneq (,$(findstring test-integration,$(MAKECMDGOALS)))
