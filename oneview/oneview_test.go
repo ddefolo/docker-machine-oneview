@@ -5,11 +5,11 @@ import (
 	"os"
 	"testing"
 
+	"github.com/HewlettPackard/oneview-golang/icsp"
+	"github.com/HewlettPackard/oneview-golang/ov"
 	"github.com/HewlettPackard/oneview-golang/rest"
 	"github.com/HewlettPackard/oneview-golang/testconfig"
-	"github.com/docker/machine/drivers"
-	"github.com/docker/machine/drivers/oneview/icsp"
-	"github.com/docker/machine/drivers/oneview/ov"
+	"github.com/docker/machine/libmachine/drivers"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -90,11 +90,13 @@ func TestCreateMachine(t *testing.T) {
 
 	template = d.Tc.GetTestData(d.Env, "TemplateProfile").(string)
 	hostname = d.Tc.GetTestData(d.Env, "HostName").(string)
-	inner := drivers.NewBaseDriver(hostname, "", "", "")
 	driver = Driver{
 		ClientICSP: ic,
 		ClientOV:   c,
-		BaseDriver: inner,
+		BaseDriver: &drivers.BaseDriver{
+			MachineName: hostname,
+			StorePath:   "",
+		},
 	}
 
 	err := c.CreateMachine(hostname, template)
@@ -135,11 +137,13 @@ func TestCustomizeServer(t *testing.T) {
 		ip = d.Tc.GetTestData(d.Env, "IloIPAddress").(string)
 		// serialNumber := d.Tc.GetTestData(d.Env, "FreeBladeSerialNumber").(string)
 		hostname = d.Tc.GetTestData(d.Env, "HostName").(string)
-		inner := drivers.NewBaseDriver(hostname, "", "", "")
 		driver = Driver{
 			ClientICSP: ic,
 			ClientOV:   c,
-			BaseDriver: inner,
+			BaseDriver: &drivers.BaseDriver{
+				MachineName: hostname,
+				StorePath:   "",
+			},
 		}
 		err = driver.getBlade()
 		assert.NoError(t, err, "getBlade threw error -> %s\n", err)

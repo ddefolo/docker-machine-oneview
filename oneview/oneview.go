@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/log"
 	"github.com/docker/machine/libmachine/mcnflag"
 	"github.com/docker/machine/libmachine/ssh"
@@ -36,6 +37,7 @@ type Driver struct {
 }
 
 const (
+	driverName     = "oneview"
 	defaultTimeout = 1 * time.Second
 )
 
@@ -47,17 +49,20 @@ var (
 	ErrDriverMissingBuildPlanOption    = errors.New("Missing option --oneview-os-plan or ONEVIEW_OS_PLAN")
 )
 
-func init() {
-	drivers.Register("oneview", &drivers.RegisteredDriver{
-		New:            NewDriver,
-		GetCreateFlags: GetCreateFlags,
-	})
+// NewDriver - create a OneView object driver
+func NewDriver(machineName string, storePath string) drivers.Driver {
+	return &Driver{
+		BaseDriver: &drivers.BaseDriver{
+			MachineName: machineName,
+			StorePath:   storePath,
+		},
+	}
 }
 
 // GetCreateFlags registers the flags this driver adds to
 // "docker hosts create"
 //
-func GetCreateFlags() []mcnflag.Flag {
+func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 	return []mcnflag.Flag{
 		mcnflag.StringFlag{
 			Name:   "oneview-ov-user",
@@ -163,16 +168,10 @@ func GetCreateFlags() []mcnflag.Flag {
 	}
 }
 
-// NewDriver - create a OneView object driver
-func NewDriver(machineName string, storePath string, caCert string, privateKey string) (drivers.Driver, error) {
-	inner := drivers.NewBaseDriver(machineName, storePath, caCert, privateKey)
-	return &Driver{BaseDriver: inner}, nil
-}
-
 // DriverName - get the name of the driver
 func (d *Driver) DriverName() string {
 	log.Debug("DriverName...")
-	return "oneview"
+	return driverName
 }
 
 // GetSSHHostname - gets the hostname that docker-machine connects to
@@ -414,17 +413,17 @@ func (d *Driver) GetState() (state.State, error) {
 	if err := d.getBlade(); err != nil {
 		return state.Error, err
 	}
-	if icsp.PROVISIONING.Equal(d.Server.OpswLifecycle) {
+	if icsp.Provisioning.Equal(d.Server.OpswLifecycle) {
 		return state.Starting, nil
 	}
-	if icsp.UNPROVISIONED.Equal(d.Server.OpswLifecycle) ||
-		icsp.PRE_UNPROVISIONED.Equal(d.Server.OpswLifecycle) {
+	if icsp.Unprovisioned.Equal(d.Server.OpswLifecycle) ||
+		icsp.PreUnProvisioned.Equal(d.Server.OpswLifecycle) {
 		return state.Stopping, nil
 	}
-	if icsp.DEACTIVATED.Equal(d.Server.OpswLifecycle) {
+	if icsp.Deactivated.Equal(d.Server.OpswLifecycle) {
 		return state.Stopped, nil
 	}
-	if icsp.PROVISION_FAILED.Equal(d.Server.OpswLifecycle) {
+	if icsp.ProvisionedFailed.Equal(d.Server.OpswLifecycle) {
 		return state.Error, nil
 	}
 	// use power state to determine status

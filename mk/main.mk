@@ -62,7 +62,7 @@ build: build-x
 cross: build-x
 
 clean: coverage-clean build-clean
-test: dco fmt vet test-short
+test: check test-short
 check: dco fmt vet lint
 validate: check test-short test-long
 install:
