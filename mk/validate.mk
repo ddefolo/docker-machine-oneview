@@ -7,7 +7,7 @@ current_dir := $(notdir $(patsubst %/,%,$(dir $(mkfile_path))))
 # TODO migrate away from the shell script and have a make equivalent instead
 dco:
 	@echo 'Performing DCO checks'
-	@echo `bash $(current_dir)/../script/validate-dco`
+	@echo `bash $(current_dir)/../build/validate-dco`
 
 # Fmt
 fmt:
