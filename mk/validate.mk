@@ -11,11 +11,11 @@ dco:
 
 # Fmt
 fmt:
-	@echo 'Performing FMT checks'
+	@echo 'Performing FMT checks, if any files appear they run gofmt -s -w on each file'
 	@test -z "$$(gofmt -s -l . 2>&1 | grep -v vendor/ | grep -v Godeps/ | tee /dev/stderr)"
 
 # Vet
-vet: build
+vet:
 	@echo 'Performing VET checks'
 	@echo $(PKGS)
 	@test -z "$$(go vet $(PKGS) 2>&1 | tee /dev/stderr)"

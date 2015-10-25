@@ -1,6 +1,4 @@
 # # Plain make targets if not requested inside a container
-include mk/utils/dockerfile.mk
-include mk/utils/godeps.mk
 
 include Makefile.inc
 ifneq (,$(findstring test-integration,$(MAKECMDGOALS)))
@@ -40,3 +38,6 @@ test: build
 		test -z "$(findstring build,$(patsubst cross,build,$@))" || docker cp $(DOCKER_CONTAINER_NAME):/go/src/github.com/docker/machine/bin bin
 
 endif
+
+include mk/utils/dockerfile.mk
+include mk/utils/godeps.mk

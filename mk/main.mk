@@ -3,7 +3,8 @@ GO_LDFLAGS := -X `go list ./version`.GitCommit=`git rev-parse --short HEAD`
 GO_GCFLAGS :=
 
 # Full package list
-PKGS := $(shell go list -tags "$(BUILDTAGS)" ./oneview/... | grep -v "/vendor/" | grep -v "/Godeps/")
+# PKGS := $(shell go list -tags "$(BUILDTAGS)" ./oneview/... | grep -v "/vendor/" | grep -v "/Godeps/")
+PKGS := ./cmd/... ./oneview/... ./version/...
 
 # Support go1.5 vendoring (let us avoid messing with GOPATH or using godep)
 export GO15VENDOREXPERIMENT = 1
@@ -50,7 +51,7 @@ include mk/validate.mk
 default: build
 # Build native machine and all drivers
 # TODO: cleanup build: build-machine build-plugins
-build: godeps build-x
+build: build-x
 
 #TODO: cleanup
 # Just build native machine itself

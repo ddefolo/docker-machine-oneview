@@ -5,11 +5,11 @@ import (
 	"os"
 	"testing"
 
+	"github.com/HewlettPackard/oneview-golang/rest"
+	"github.com/HewlettPackard/oneview-golang/testconfig"
 	"github.com/docker/machine/drivers"
 	"github.com/docker/machine/drivers/oneview/icsp"
 	"github.com/docker/machine/drivers/oneview/ov"
-	"github.com/docker/machine/drivers/oneview/rest"
-	"github.com/docker/machine/drivers/oneview/testconfig"
 	"github.com/stretchr/testify/assert"
 )
 

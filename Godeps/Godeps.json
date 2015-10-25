@@ -2,13 +2,25 @@
 	"ImportPath": "_/Users/eraigosa/git/HewlettPackard/docker-machine-oneview",
 	"GoVersion": "go1.5",
 	"Packages": [
-		"github.com/docker/machine"
+		"github.com/docker/docker/pkg/term",
+		"github.com/docker/machine",
+		"github.com/stretchr/testify/assert"
 	],
 	"Deps": [
 		{
+			"ImportPath": "github.com/docker/docker/pkg/term",
+			"Comment": "v1.4.1-7162-g029e7ae",
+			"Rev": "029e7ae4e02683edda30255d3484e8009b121b2a"
+		},
+		{
 			"ImportPath": "github.com/docker/machine",
-			"Comment": "v0.5.0-rc3-18-g0ac5c90",
-			"Rev": "0ac5c901d259ffe5c9a5fdb1178b91df28d17acf"
+			"Comment": "v0.5.0-rc3-37-ge421a07",
+			"Rev": "e421a07336c65fe28177b8a6a2c979c2f66f4d8c"
+		},
+		{
+			"ImportPath": "github.com/stretchr/testify/assert",
+			"Comment": "v1.0-51-gf3960ab",
+			"Rev": "f3960ab1f9664ecc4e27c78af27cc9063d745a43"
 		}
 	]
 }
