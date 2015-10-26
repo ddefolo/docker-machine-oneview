@@ -39,7 +39,6 @@ ifeq ($(VERBOSE),true)
 	GO := go
 endif
 
-include mk/utils/godeps.mk
 include mk/build.mk
 # include mk/coverage.mk
 # include mk/release.mk
