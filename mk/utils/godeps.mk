@@ -45,7 +45,7 @@ godeps-init: godeps-clean
 		$(foreach GOPCKG,$(GO_PACKAGES),$(call godeps-get,$(GOPCKG)))
 
 godeps-save:
-		$(call godeps-save, $(GO_PACKAGES))
+		$(call godeps-save, $(GO_PACKAGES) github.com/HewlettPackard/oneview-golang)
 
-godeps: godeps-init
+godeps: godeps-init godeps-save
 godep: godeps
