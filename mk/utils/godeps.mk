@@ -28,6 +28,14 @@ define godeps-clean
 		echo "Skipting clean for $(1)";
 endef
 
+# TODO: remove after OSRB
+define godeps-oneview
+	[ ! -h $(PREFIX)/vendor ] && ln -s Godeps/_workspace/src vendor; \
+	[ ! -d $(PREFIX)/Godeps/_workspace/src ] && mkdir -p $(PREFIX)/Godeps/_workspace/src; \
+	[ ! -d $(PREFIX)/Godeps/_workspace/src/github.com/HewlettPackard/oneview-golang ] && mkdir -p $(PREFIX)/Godeps/_workspace/src/github.com/HewlettPackard/oneview-golang; \
+	cp -R $(GOPATH)/src/github.com/HewlettPackard/oneview-golang/ $(PREFIX)/Godeps/_workspace/src/github.com/HewlettPackard/oneview-golang;
+endef
+
 vendor-clean:
 		@rm -rf $(PREFIX)/vendor/*
 		@echo cleaning up in $(PREFIX)/vendor/*
@@ -55,8 +63,8 @@ godeps-save:
 # setup the vendor folder with required packages that have been committed
 godeps-vendor:
 		echo "Placing packages into $(GOVENDORPATH)"
-		cp -R $(GOPATH)/src/github.com/HewlettPackard/oneview-golang/ $(PREFIX)/Godeps/_workspace/src/github.com/HewlettPackard/oneview-golang
-		GOPATH=$(GOVENDORPATH) godep restore
+		$(call godeps-oneview)
+		GOPATH=$(GOVENDORPATH) godep restore;
 
 godeps: godeps-init godeps-save
 		echo "All done! If all looks good vendor it with : make godeps-vendor"
