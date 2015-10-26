@@ -1,7 +1,11 @@
 # # Plain make targets if not requested inside a container
 
+define noop_targets
+	@make -pn | sed -rn '/^[^# \t\.%].*:[^=]?/p'|grep -v '='| grep -v '(%)'| grep -v '/'| awk -F':' '{print $$1}'|sort -u;
+endef
+
 include Makefile.inc
-include mk/utils/dockerfile.mk
+
 ifneq (,$(findstring test-integration,$(MAKECMDGOALS)))
 	include mk/main.mk
 else ifeq ($(USE_CONTAINER),)
@@ -14,6 +18,12 @@ DOCKER_CONTAINER_NAME := docker-machine-build-container
 DOCKER_FILE_URL := "https://raw.githubusercontent.com/docker/machine/master/Dockerfile"
 DOCKER_FILE := .dockerfile.machine
 
+noop:
+	@echo When using 'USE_CONTAINER' use a "make <target>"
+	@echo
+	@echo Possible targets
+	@echo
+	$(call noop_targets)
 
 build: gen-dockerfile
 test: build
@@ -36,6 +46,9 @@ test: build
 		    make $@
 
 		test ! -d bin || rm -Rf bin
-		test -z "$(findstring build,$(patsubst cross,build,$@))" || docker cp $(DOCKER_CONTAINER_NAME):/go/src/github.com/docker/machine/bin bin
+		test -z "$(findstring build,$(patsubst cross,build,$@))" || docker cp $(DOCKER_CONTAINER_NAME):/go/src/github.com/$(GH_USER)/$(GH_REPO)/bin bin
 
 endif
+
+include mk/utils/dockerfile.mk
+include mk/utils/godeps.mk

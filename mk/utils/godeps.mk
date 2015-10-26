@@ -4,14 +4,6 @@ GO_PACKAGES := $(GO_PACKAGES) golang.org/x/crypto/ssh
 
 GO15VENDOREXPERIMENT := 1
 
-# TODO: remove after OSRB
-define godeps-oneview
-	[ ! -h $(PREFIX)/vendor ] && ln -s Godeps/_workspace/src vendor; \
-	[ ! -d $(PREFIX)/Godeps/_workspace/src ] && mkdir -p $(PREFIX)/Godeps/_workspace/src; \
-	[ ! -d $(PREFIX)/Godeps/_workspace/src/github.com/HewlettPackard/oneview-golang ] && mkdir -p $(PREFIX)/Godeps/_workspace/src/github.com/HewlettPackard/oneview-golang; \
-	cp -R $(GOPATH)/src/github.com/HewlettPackard/oneview-golang/ $(PREFIX)/Godeps/_workspace/src/github.com/HewlettPackard/oneview-golang;
-endef
-
 # Cross builder helper
 define godeps-get
 	GOPATH=$(GOVENDORPATH) godep get $(1);
@@ -43,8 +35,13 @@ define godeps-vendor-gitclean
 endef
 
 # TODO: remove this call when we OSRB
+godeps-vendor-clean-oneview:
+	$(call godeps-vendor-gitclean,github.com/HewlettPackard/oneview-golang)
+
 godeps-init-oneview:
 		$(call godeps-get,github.com/HewlettPackard/oneview-golang)
+
+# END TODO:
 
 vendor-clean:
 		@rm -rf $(PREFIX)/vendor/*
@@ -57,6 +54,7 @@ godeps-clean: vendor-clean
 		rm -rf $(GOPATH)/src/github.com/$(GH_USER)/$(GH_REPO)
 
 # setup a fresh GOPATH directory with what would be needed to build
+# TODO: clean dependencies on oneview
 godeps-init: godeps-clean godeps-init-oneview
 		@echo "Pulling required packages into $(GOPATH)"
 		mkdir -p $(GOPATH)/src/github.com/$(GH_USER)
@@ -68,13 +66,12 @@ godeps-save:
 		$(call godeps-save, $(GO_PACKAGES))
 
 # setup the vendor folder with required packages that have been committed
-godeps-vendor:
+# TODO: clean dependencies on oneview
+godeps-vendor: godeps-vendor-clean-oneview
 		echo "Placing packages into $(GOVENDORPATH)"
 		[ ! -h $(PREFIX)/vendor ] && ln -s Godeps/_workspace/src vendor; \
 		[ ! -d $(PREFIX)/Godeps/_workspace/src ] && mkdir -p $(PREFIX)/Godeps/_workspace/src; \
 		$(foreach GOPCKG,$(GO_PACKAGES),$(call godeps-vendor-gitclean,$(GOPCKG)))
-		# TODO: remove after OSRB and move it to GO_PACKAGES
-		$(call godeps-oneview)
 
 godeps: godeps-init godeps-save godeps-vendor
 		echo "All done! run git status and commit to save any changes."
