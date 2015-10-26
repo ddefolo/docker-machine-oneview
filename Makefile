@@ -1,22 +1,24 @@
 # # Plain make targets if not requested inside a container
+
+include Makefile.inc
+include mk/utils/dockerfile.mk
 ifneq (,$(findstring test-integration,$(MAKECMDGOALS)))
-	include Makefile.inc
 	include mk/main.mk
 else ifeq ($(USE_CONTAINER),)
-	include Makefile.inc
 	include mk/main.mk
 else
 # Otherwise, with docker, swallow all targets and forward into a container
 DOCKER_IMAGE_NAME := "docker-machine-build"
-DOCKER_CONTAINER_NAME := "docker-machine-build-container"
+DOCKER_CONTAINER_NAME := docker-machine-build-container
 # get the dockerfile from docker/machine project so we stay in sync with the versions they use for go
 DOCKER_FILE_URL := "https://raw.githubusercontent.com/docker/machine/master/Dockerfile"
+DOCKER_FILE := .dockerfile.machine
 
-build:
+
+build: gen-dockerfile
 test: build
 %:
-		curl -s $DOCKER_FILE_URL > ./.dockerfile.machine
-		docker build -f ./.dockerfile.machine -t $(DOCKER_IMAGE_NAME) .
+		docker build -f $(DOCKER_FILE) -t $(DOCKER_IMAGE_NAME) .
 
 		test -z '$(shell docker ps -a | grep $(DOCKER_CONTAINER_NAME))' || docker rm -f $(DOCKER_CONTAINER_NAME)
 

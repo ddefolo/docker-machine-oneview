@@ -1,0 +1,35 @@
+{
+	"ImportPath": "_/Users/eraigosa/git/HewlettPackard/docker-machine-oneview",
+	"GoVersion": "go1.5",
+	"Packages": [
+		"github.com/docker/docker/pkg/term",
+		"github.com/docker/machine",
+		"github.com/stretchr/testify/assert",
+		"golang.org/x/crypto/ssh"
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/docker/docker/pkg/term",
+			"Comment": "v1.4.1-7166-g75128c4",
+			"Rev": "75128c46c7881325c87de8797b455534558784ed"
+		},
+		{
+			"ImportPath": "github.com/docker/machine",
+			"Comment": "v0.5.0-rc3-37-ge421a07",
+			"Rev": "e421a07336c65fe28177b8a6a2c979c2f66f4d8c"
+		},
+		{
+			"ImportPath": "github.com/stretchr/testify/assert",
+			"Comment": "v1.0-51-gf3960ab",
+			"Rev": "f3960ab1f9664ecc4e27c78af27cc9063d745a43"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/curve25519",
+			"Rev": "c8b9e6388ef638d5a8a9d865c634befdc46a6784"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/ssh",
+			"Rev": "c8b9e6388ef638d5a8a9d865c634befdc46a6784"
+		}
+	]
+}

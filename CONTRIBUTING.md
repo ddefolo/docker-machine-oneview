@@ -9,11 +9,136 @@ project work.   Please see read the [docker contribution](https://github.com/doc
 
 ## Topics
 
+* [Building](#building)
 * [Reporting Issues](#reporting-other-issues)
 * [Quick Contribution Tips and Guidelines](#quick-contribution-tips-and-guidelines)
 * [Community Guidelines](#docker-community-guidelines)
 
-## Reporting other issues
+# Building
+
+The requirements to build Machine are:
+
+1. A running instance of Docker or a Golang 1.5 development environment
+2. The `bash` shell
+3. [Make](https://www.gnu.org/software/make/)
+
+## Build using Docker containers
+
+To build the `docker-machine` binary using containers, simply run:
+
+    $ export USE_CONTAINER=true
+    $ make build
+
+## Built binary
+
+After the build is complete a `bin/docker-machine-driver-oneview` binary will be created.
+
+You may call:
+
+    $ make clean
+
+to clean-up build results.
+
+## Check, test and validation
+
+To run basic validation (dco, fmt), and the project unit tests, call:
+
+    $ make test
+
+If you want more indepth validation (vet, lint), and all tests with race detection, call:
+
+    $ make validate
+
+If you want to simply check dco, fmt, or lint use:
+
+    $ make check
+
+If you make a pull request, it is highly encouraged that you submit tests for
+the code that you have added or modified in the same pull request.
+
+## Code Coverage
+
+To generate an html code coverage report of the Machine codebase, run:
+
+    make coverage-serve
+
+And navigate to http://localhost:8000 (hit `CTRL+C` to stop the server).
+
+### Native build
+
+Alternatively, if you are building natively, you can simply run:
+
+    make coverage-html
+
+This will generate and open the report file.
+
+## List of all targets
+
+### High-level targets
+
+    make clean
+    make build
+    make test
+    make validate
+
+### Advanced build targets
+
+Just build the machine binary itself (native):
+
+    make machine
+
+Just build the plugins (native):
+
+    make plugins
+
+Build for all supported oses and architectures (binaries will be in the `bin` project subfolder):
+
+    make cross
+
+Build for a specific list of oses and architectures:
+
+    TARGET_OS=linux TARGET_ARCH="amd64 arm" make cross
+
+You can further control build options through the following environment variables:
+
+    DEBUG=true # enable debug build
+    STATIC=true # build static (note: when cross-compiling, the build is always static)
+    VERBOSE=true # verbose output
+    PREFIX=folder # put binaries in another folder (not the default `./bin`)
+
+Scrub build results:
+
+    make build-clean
+
+### Coverage targets
+
+    make coverage-html
+    make coverage-serve
+    make coverage-send
+    make coverage-generate
+    make coverage-clean
+
+### Tests targets
+
+    make test-short
+    make test-long
+    make test-integration
+
+### Validation targets
+
+    make fmt
+    make vet
+    make lint
+    make dco
+
+## Integration Tests
+
+### Setup
+
+We use [BATS](https://github.com/sstephenson/bats) for integration testing, so,
+first make sure to [install it](https://github.com/sstephenson/bats#installing-bats-from-source).
+
+# Reporting other issues
 
 A great way to contribute to the project is to send a detailed report when you
 encounter an issue. We always appreciate a well-written, thorough bug report,
@@ -80,18 +205,18 @@ Additional info:
 ```
 
 
-##Quick contribution tips and guidelines
+#Quick contribution tips and guidelines
 
 This section gives the experienced contributor some tips and guidelines.
 
-###Pull requests are always welcome
+##Pull requests are always welcome
 
 Not sure if that typo is worth a pull request? Found a bug and know how to fix
 it? Do it! We will appreciate it. Any significant improvement should be
 documented as [a GitHub issue](https://github.com/HewlettPackard/docker-machine-oneview/issues) before
 anybody starts working on it.
 
-### Conventions
+## Conventions
 
 Fork the repository and make changes on your fork in a feature branch:
 
@@ -156,7 +281,7 @@ from the Git history.
 
 Please see the [Coding Style](#coding-style) for further guidelines.
 
-### Merge approval
+## Merge approval
 
 Project maintainers use LGTM (Looks Good To Me) in comments on the code review to
 indicate acceptance.
@@ -168,7 +293,7 @@ absolute majority of the maintainers of `registry/`.
 
 For more details, see the [MAINTAINERS](MAINTAINERS) page.
 
-### Sign your work
+## Sign your work
 
 The sign-off is a simple line at the end of the explanation for the patch. Your
 signature certifies that you wrote the patch or otherwise have the right to pass
@@ -226,7 +351,7 @@ Note that the old-style `Docker-DCO-1.1-Signed-off-by: ...` format is still
 accepted, so there is no need to update outstanding pull requests to the new
 format right away, but please do adjust your processes for future contributions.
 
-## Docker community guidelines
+# Docker community guidelines
 
 We want to keep the Docker community awesome, growing and collaborative. We need
 your help to keep it that way. To help with this we've come up with some general
@@ -250,7 +375,7 @@ guidelines for the community as a whole:
   to an email you are potentially sending to a large number of people. Please
   consider this before you update. Also remember that nobody likes spam.
 
-### Guideline violations — 3 strikes method
+## Guideline violations — 3 strikes method
 
 The point of this section is not to find opportunities to punish people, but we
 do need a fair way to deal with people who are making our community suck.
@@ -285,7 +410,7 @@ do need a fair way to deal with people who are making our community suck.
 	appeals, we know that mistakes happen, and we'll work with you to come up with a
 	fair solution if there has been a misunderstanding.
 
-## Coding Style
+# Coding Style
 
 Unless explicitly stated, we follow all coding guidelines from the Go
 community. While some of these standards may seem arbitrary, they somehow seem

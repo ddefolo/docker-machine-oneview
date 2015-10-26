@@ -1,0 +1,5 @@
+docker-machine*
+.proxy*.env
+*.log
+bin
+cover
