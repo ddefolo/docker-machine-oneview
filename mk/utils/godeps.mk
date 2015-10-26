@@ -43,6 +43,8 @@ godeps-init: godeps-clean
 		# TODO: remove this call when we OSRB
 		$(call godeps-get,github.com/HewlettPackard/oneview-golang)
 		$(foreach GOPCKG,$(GO_PACKAGES),$(call godeps-get,$(GOPCKG)))
+
+godeps-save:
 		$(call godeps-save, $(GO_PACKAGES))
 
 godeps: godeps-init
