@@ -12,7 +12,7 @@ define godeps-get
 endef
 
 define godeps-save
-	godep save -v $(1);
+	godep save $(1);
 endef
 
 define godeps-clean

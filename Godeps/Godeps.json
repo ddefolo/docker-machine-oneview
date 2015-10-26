@@ -5,13 +5,18 @@
 		"github.com/docker/docker/pkg/term",
 		"github.com/docker/machine",
 		"github.com/stretchr/testify/assert",
-		"golang.org/x/crypto/ssh"
+		"golang.org/x/crypto/ssh",
+		"github.com/HewlettPackard/oneview-golang"
 	],
 	"Deps": [
 		{
+			"ImportPath": "github.com/HewlettPackard/oneview-golang",
+			"Rev": "8ef0a0dad6be08667f3e54acebdccf568f5701e6"
+		},
+		{
 			"ImportPath": "github.com/docker/docker/pkg/term",
-			"Comment": "v1.4.1-7162-g029e7ae",
-			"Rev": "029e7ae4e02683edda30255d3484e8009b121b2a"
+			"Comment": "v1.4.1-7166-g75128c4",
+			"Rev": "75128c46c7881325c87de8797b455534558784ed"
 		},
 		{
 			"ImportPath": "github.com/docker/machine",
