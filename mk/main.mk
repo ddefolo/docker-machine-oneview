@@ -14,6 +14,9 @@ GOLINT_BIN := $(GOPATH)/bin/golint
 GOLINT := $(shell [ -x $(GOLINT_BIN) ] && echo $(GOLINT_BIN) || echo '')
 
 # Honor debug
+# note when compiling directly on mac with DEBUG option i was getting this error:
+# runtime.cgocallbackg: nosplit stack overflow
+# if you get this try unset DEBUG
 ifeq ($(DEBUG),true)
 	# Disable function inlining and variable registerization
 	GO_GCFLAGS := -gcflags "-N -l"

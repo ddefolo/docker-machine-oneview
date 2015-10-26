@@ -1,6 +1,7 @@
 # setup any dependencies for Build
 
 GO_PACKAGES := github.com/docker/docker/pkg/term github.com/docker/machine github.com/stretchr/testify/assert
+GO_PACKAGES := $(GO_PACKAGES) golang.org/x/crypto/ssh
 # GOPATH := $(HOME)/go
 # PATH := $(PATH):$(GOPATH)/bin:/usr/local/go/bin
 GO15VENDOREXPERIMENT := 1

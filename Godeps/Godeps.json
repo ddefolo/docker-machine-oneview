@@ -4,7 +4,8 @@
 	"Packages": [
 		"github.com/docker/docker/pkg/term",
 		"github.com/docker/machine",
-		"github.com/stretchr/testify/assert"
+		"github.com/stretchr/testify/assert",
+		"golang.org/x/crypto/ssh"
 	],
 	"Deps": [
 		{
@@ -21,6 +22,14 @@
 			"ImportPath": "github.com/stretchr/testify/assert",
 			"Comment": "v1.0-51-gf3960ab",
 			"Rev": "f3960ab1f9664ecc4e27c78af27cc9063d745a43"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/curve25519",
+			"Rev": "c8b9e6388ef638d5a8a9d865c634befdc46a6784"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/ssh",
+			"Rev": "c8b9e6388ef638d5a8a9d865c634befdc46a6784"
 		}
 	]
 }
