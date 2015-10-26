@@ -49,11 +49,13 @@ godeps-init: godeps-clean
 		$(foreach GOPCKG,$(GO_PACKAGES),$(call godeps-get,$(GOPCKG)))
 
 godeps-save:
-		$(call godeps-save, $(GO_PACKAGES) github.com/HewlettPackard/oneview-golang)
+		# TODO: add oneview-golang after OSRB $(call godeps-save, $(GO_PACKAGES) github.com/HewlettPackard/oneview-golang)
+		$(call godeps-save, $(GO_PACKAGES))
 
 # setup the vendor folder with required packages that have been committed
 godeps-vendor:
 		echo "Placing packages into $(GOVENDORPATH)"
+		cp -R $(GOPATH)/src/github.com/HewlettPackard/oneview-golang/ $(PREFIX)/Godeps/_workspace/src/github.com/HewlettPackard/oneview-golang
 		GOPATH=$(GOVENDORPATH) godep restore
 
 godeps: godeps-init godeps-save
