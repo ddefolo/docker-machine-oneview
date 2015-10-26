@@ -1,6 +1,7 @@
 # # Plain make targets if not requested inside a container
 
 include Makefile.inc
+include mk/utils/dockerfile.mk
 ifneq (,$(findstring test-integration,$(MAKECMDGOALS)))
 	include mk/main.mk
 else ifeq ($(USE_CONTAINER),)

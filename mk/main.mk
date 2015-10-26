@@ -39,7 +39,6 @@ ifeq ($(VERBOSE),true)
 	GO := go
 endif
 
-include mk/utils/dockerfile.mk
 include mk/utils/godeps.mk
 include mk/build.mk
 # include mk/coverage.mk

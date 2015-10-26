@@ -4,7 +4,7 @@ GO_PACKAGES := github.com/docker/docker/pkg/term github.com/docker/machine githu
 GO_PACKAGES := $(GO_PACKAGES) golang.org/x/crypto/ssh
 # GOPATH := $(HOME)/go
 # PATH := $(PATH):$(GOPATH)/bin:/usr/local/go/bin
-GO15VENDOREXPERIMENT := 1
+# GO15VENDOREXPERIMENT := 1
 
 # Cross builder helper
 define godeps-get
@@ -13,6 +13,10 @@ endef
 
 define godeps-save
 	godep save $(1);
+endef
+
+define GOVENDORPATH
+$(shell godep path)
 endef
 
 define godeps-clean
@@ -25,8 +29,8 @@ define godeps-clean
 endef
 
 vendor-clean:
-		@rm -rf $(PREFIX)/vendor
-		@echo cleaning up in $(PREFIX)/vendor
+		@rm -rf $(PREFIX)/vendor/*
+		@echo cleaning up in $(PREFIX)/vendor/*
 
 # for fresh setup so we can do godep save -r
 godeps-clean: vendor-clean
@@ -47,5 +51,12 @@ godeps-init: godeps-clean
 godeps-save:
 		$(call godeps-save, $(GO_PACKAGES) github.com/HewlettPackard/oneview-golang)
 
+# setup the vendor folder with required packages that have been committed
+godeps-vendor:
+		echo "Placing packages into $(GOVENDORPATH)"
+		GOPATH=$(GOVENDORPATH) godep restore
+
 godeps: godeps-init godeps-save
+		echo "All done! If all looks good vendor it with : make godeps-vendor"
+
 godep: godeps
