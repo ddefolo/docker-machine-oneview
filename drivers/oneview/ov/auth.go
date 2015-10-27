@@ -89,13 +89,14 @@ func (c *OVClient) SessionLogout() error {
 	var (
 		uri = "/rest/login-sessions"
 	)
-
+	log.Debugf("Calling logout for header -> %+v", c.GetAuthHeaderMap())
 	c.SetAuthHeaderOptions(c.GetAuthHeaderMap())
 	_, err := c.RestAPICall(rest.DELETE, uri, nil)
 	if err != nil {
+		log.Debugf("Error from %s :-> %+v", uri, err)
 		return err
 	}
-	c.APIKey = ""
+	c.APIKey = "none"
 	// successful logout HTTP status 204 (no content)
 	return nil
 	/*if err := json.Unmarshal([]byte(data), &session); err != nil {

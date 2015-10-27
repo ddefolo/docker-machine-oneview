@@ -92,7 +92,7 @@ func (c *ICSPClient) SessionLogout() error {
 	if err != nil {
 		return err
 	}
-	c.APIKey = ""
+	c.APIKey = "none"
 	// successful logout HTTP status 204 (no content)
 	return nil
 	/*if err := json.Unmarshal([]byte(data), &session); err != nil {
