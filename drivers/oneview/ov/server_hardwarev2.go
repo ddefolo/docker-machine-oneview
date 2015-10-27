@@ -1,6 +1,8 @@
 package ov
 
 import (
+	"strings"
+
 	"github.com/docker/machine/drivers/oneview/liboneview"
 	"github.com/docker/machine/drivers/oneview/utils"
 	"github.com/docker/machine/log"
@@ -52,15 +54,37 @@ type MpIPAddressv200 struct {
 	Type    string `json:"type,omitempty"`    // type The type of IP address. The following are useful values for the IP address type: Static - Static IP address configuration; DHCP - Dynamic host configuration protocol; SLAAC - Stateless address autoconfiguration (IPv6); LinkLocal - Link-local address (IPv6);
 }
 
-// TODO: needs a type
-// Values
-//     DHCP
-//     LinkLocal
-//     LinkLocal_Required
-//     Lookup
-//     SLAAC
-//     Static
-//     Undefined
+// MpIPTypev200 Type constant
+type MpIPTypev200 int
+
+// const block
+const (
+	MpDHCP MpIPTypev200 = 1 + iota
+	MpLinkLocal
+	MpLinkLocalRequired
+	MpLookup
+	MpSlaaC
+	MpStatic
+	MpUndefined
+)
+
+var mpiptypevlist = [...]string{
+	"DHCP",
+	"LinkLocal",
+	"LinkLocal_Required",
+	"Lookup",
+	"SLAAC",
+	"Static",
+	"Undefined",
+}
+
+// String helper for MpIPTypev200
+func (o MpIPTypev200) String() string { return mpiptypevlist[o-1] }
+
+// Equal helper for MpIPTypev200
+func (o MpIPTypev200) Equal(s string) bool {
+	return (strings.ToUpper(s) == strings.ToUpper(o.String()))
+}
 
 // PortMapv200 -
 type PortMapv200 struct {
