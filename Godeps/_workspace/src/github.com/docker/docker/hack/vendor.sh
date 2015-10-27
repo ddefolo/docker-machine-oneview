@@ -14,14 +14,14 @@ clone git github.com/gorilla/context 14f550f51a
 clone git github.com/gorilla/mux e444e69cbd
 clone git github.com/kr/pty 5cf931ef8f
 clone git github.com/mattn/go-sqlite3 v1.1.0
-clone git github.com/microsoft/hcsshim 325e531f8c49dd78580d5fd197ddb972fa4610e7
+clone git github.com/microsoft/hcsshim de43b42b5ce14dfdcbeedb0628b0032174d89caa
 clone git github.com/mistifyio/go-zfs v2.1.1
 clone git github.com/tchap/go-patricia v2.1.0
 clone git github.com/vdemeester/shakers 3c10293ce22b900c27acad7b28656196fcc2f73b
 clone git golang.org/x/net 3cffabab72adf04f8e3b01c5baf775361837b5fe https://github.com/golang/net.git
 
 #get libnetwork packages
-clone git github.com/docker/libnetwork bf041154d27ed34ed39722328c8f1b0144a56fe2
+clone git github.com/docker/libnetwork c92c21bca42a3581fd108d3222848faa16372249
 clone git github.com/armon/go-metrics eb0af217e5e9747e41dd5303755356b62d28e3ec
 clone git github.com/hashicorp/go-msgpack 71c2886f5a673a35f909803f38ece5810165097b
 clone git github.com/hashicorp/memberlist 9a1e242e454d2443df330bdd51a436d5a9058fc4
