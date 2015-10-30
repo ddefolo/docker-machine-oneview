@@ -5,6 +5,7 @@ package daemon
 import (
 	"strings"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/daemon/execdriver"
 	derr "github.com/docker/docker/errors"
 	"github.com/docker/docker/volume"
@@ -79,11 +80,6 @@ func populateCommand(c *Container, env []string) error {
 		return derr.ErrorCodeInvalidNetworkMode.WithArgs(c.hostConfig.NetworkMode)
 	}
 
-	pid := &execdriver.Pid{}
-
-	// TODO Windows. This can probably be factored out.
-	pid.HostPid = c.hostConfig.PidMode.IsHost()
-
 	// TODO Windows. More resource controls to be implemented later.
 	resources := &execdriver.Resources{
 		CommonResources: execdriver.CommonResources{
@@ -125,25 +121,23 @@ func populateCommand(c *Container, env []string) error {
 	}
 	layerFolder := m["dir"]
 
-	// TODO Windows: Factor out remainder of unused fields.
 	c.command = &execdriver.Command{
-		ID:             c.ID,
-		Rootfs:         c.rootfsPath(),
-		ReadonlyRootfs: c.hostConfig.ReadonlyRootfs,
-		InitPath:       "/.dockerinit",
-		WorkingDir:     c.Config.WorkingDir,
-		Network:        en,
-		Pid:            pid,
-		Resources:      resources,
-		CapAdd:         c.hostConfig.CapAdd.Slice(),
-		CapDrop:        c.hostConfig.CapDrop.Slice(),
-		ProcessConfig:  processConfig,
-		ProcessLabel:   c.getProcessLabel(),
-		MountLabel:     c.getMountLabel(),
-		FirstStart:     !c.HasBeenStartedBefore,
-		LayerFolder:    layerFolder,
-		LayerPaths:     layerPaths,
-		Hostname:       c.Config.Hostname,
+		CommonCommand: execdriver.CommonCommand{
+			ID:            c.ID,
+			Rootfs:        c.rootfsPath(),
+			InitPath:      "/.dockerinit",
+			WorkingDir:    c.Config.WorkingDir,
+			Network:       en,
+			MountLabel:    c.getMountLabel(),
+			Resources:     resources,
+			ProcessConfig: processConfig,
+			ProcessLabel:  c.getProcessLabel(),
+		},
+		FirstStart:  !c.HasBeenStartedBefore,
+		LayerFolder: layerFolder,
+		LayerPaths:  layerPaths,
+		Hostname:    c.Config.Hostname,
+		Isolated:    c.hostConfig.Isolation.IsHyperV(),
 	}
 
 	return nil
@@ -183,7 +177,11 @@ func (container *Container) setupIpcDirs() error {
 	return nil
 }
 
-func (container *Container) unmountIpcMounts() error {
+func (container *Container) unmountIpcMounts(unmount func(pth string) error) error {
+	return nil
+}
+
+func detachMounted(path string) error {
 	return nil
 }
 
@@ -193,4 +191,27 @@ func (container *Container) ipcMounts() []execdriver.Mount {
 
 func getDefaultRouteMtu() (int, error) {
 	return -1, errSystemNotSupported
+}
+
+// conditionalMountOnStart is a platform specific helper function during the
+// container start to call mount.
+func (container *Container) conditionalMountOnStart() error {
+	// We do not mount if a Hyper-V container
+	if !container.hostConfig.Isolation.IsHyperV() {
+		if err := container.Mount(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// conditionalUnmountOnCleanup is a platform specific helper function called
+// during the cleanup of a container to unmount.
+func (container *Container) conditionalUnmountOnCleanup() {
+	// We do not unmount if a Hyper-V container
+	if !container.hostConfig.Isolation.IsHyperV() {
+		if err := container.Unmount(); err != nil {
+			logrus.Errorf("%v: Failed to umount filesystem: %v", container.ID, err)
+		}
+	}
 }

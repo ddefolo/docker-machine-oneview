@@ -34,6 +34,8 @@ type Sandbox interface {
 	Refresh(options ...SandboxOption) error
 	// SetKey updates the Sandbox Key
 	SetKey(key string) error
+	// Rename changes the name of all attached Endpoints
+	Rename(name string) error
 	// Delete destroys this container after detaching it from all connected endpoints.
 	Delete() error
 }
@@ -166,6 +168,7 @@ func (sb *sandbox) Delete() error {
 	c := sb.controller
 
 	// Detach from all endpoints
+	retain := false
 	for _, ep := range sb.getConnectedEndpoints() {
 		// endpoint in the Gateway network will be cleaned up
 		// when when sandbox no longer needs external connectivity
@@ -174,14 +177,22 @@ func (sb *sandbox) Delete() error {
 		}
 
 		if err := ep.Leave(sb); err != nil {
+			retain = true
 			log.Warnf("Failed detaching sandbox %s from endpoint %s: %v\n", sb.ID(), ep.ID(), err)
 		}
 
 		if err := ep.Delete(); err != nil {
+			retain = true
 			log.Warnf("Failed deleting endpoint %s: %v\n", ep.ID(), err)
 		}
 	}
 
+	if retain {
+		sb.Lock()
+		sb.inDelete = false
+		sb.Unlock()
+		return fmt.Errorf("could not cleanup all the endpoints in container %s / sandbox %s", sb.containerID, sb.id)
+	}
 	// Container is going away. Path cache in etchosts is most
 	// likely not required any more. Drop it.
 	etchosts.Drop(sb.config.hostsPath)
@@ -199,6 +210,30 @@ func (sb *sandbox) Delete() error {
 	c.Unlock()
 
 	return nil
+}
+
+func (sb *sandbox) Rename(name string) error {
+	var err error
+
+	for _, ep := range sb.getConnectedEndpoints() {
+		if ep.endpointInGWNetwork() {
+			continue
+		}
+
+		oldName := ep.Name()
+		lEp := ep
+		if err = ep.rename(name); err != nil {
+			break
+		}
+
+		defer func() {
+			if err != nil {
+				lEp.rename(oldName)
+			}
+		}()
+	}
+
+	return err
 }
 
 func (sb *sandbox) Refresh(options ...SandboxOption) error {

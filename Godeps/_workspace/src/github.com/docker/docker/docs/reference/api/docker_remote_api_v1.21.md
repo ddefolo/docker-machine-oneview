@@ -265,6 +265,8 @@ Json Parameters:
            + `container_path` to create a new volume for the container
            + `host_path:container_path` to bind-mount a host path into the container
            + `host_path:container_path:ro` to make the bind-mount read-only inside the container.
+           + `volume_name:container_path` to bind-mount a volume managed by a volume plugin into the container.
+           + `volume_name:container_path:ro` to make the bind mount read-only inside the container.
     -   **Links** - A list of links for the container. Each link entry should be
           in the form of `container_name:alias`.
     -   **LxcConf** - LXC specific configurations. These configurations only
@@ -435,11 +437,26 @@ Return low-level information on the container `id`
 		"Name": "/boring_euclid",
 		"NetworkSettings": {
 			"Bridge": "",
-			"Gateway": "",
-			"IPAddress": "",
-			"IPPrefixLen": 0,
-			"MacAddress": "",
-			"Ports": null
+			"SandboxID": "",
+			"HairpinMode": false,
+			"LinkLocalIPv6Address": "",
+			"LinkLocalIPv6PrefixLen": 0,
+			"SandboxKey": "",
+			"SecondaryIPAddresses": [],
+			"SecondaryIPv6Addresses": [],
+			"Ports": null,
+			"Networks": {
+				"bridge": {
+					"EndpointID": "",
+					"Gateway": "",
+					"IPAdress": "",
+					"IPPrefixLen": 0,
+					"IPv6Gateway": "",
+					"GlobalIPv6Address": "",
+					"GlobalIPv6PrefixLen": 0,
+					"MacAddress": ""
+				}
+			}
 		},
 		"Path": "/bin/sh",
 		"ProcessLabel": "",
@@ -2367,14 +2384,29 @@ Return low-level information about the `exec` command `id`.
           "SecurityOpt" : null
         },
         "Image" : "5506de2b643be1e6febbf3b8a240760c6843244c41e12aa2f60ccbb7153d17f5",
-        "NetworkSettings" : {
-          "IPAddress" : "172.17.0.2",
-          "IPPrefixLen" : 16,
-          "MacAddress" : "02:42:ac:11:00:02",
-          "Gateway" : "172.17.42.1",
-          "Bridge" : "docker0",
-          "Ports" : {}
-        },
+	"NetworkSettings": {
+		"Bridge": "",
+		"SandboxID": "",
+		"HairpinMode": false,
+		"LinkLocalIPv6Address": "",
+		"LinkLocalIPv6PrefixLen": 0,
+		"SandboxKey": "",
+		"SecondaryIPAddresses": [],
+		"SecondaryIPv6Addresses": [],
+		"Ports": null,
+		"Networks": {
+			"bridge": {
+				"EndpointID": "",
+				"Gateway": "",
+				"IPAdress": "",
+				"IPPrefixLen": 0,
+				"IPv6Gateway": "",
+				"GlobalIPv6Address": "",
+				"GlobalIPv6PrefixLen": 0,
+				"MacAddress": ""
+			}
+		}
+	},
         "ResolvConfPath" : "/var/lib/docker/containers/8f177a186b977fb451136e0fdf182abff5599a08b3c7f6ef0d36a55aaf89634c/resolv.conf",
         "HostnamePath" : "/var/lib/docker/containers/8f177a186b977fb451136e0fdf182abff5599a08b3c7f6ef0d36a55aaf89634c/hostname",
         "HostsPath" : "/var/lib/docker/containers/8f177a186b977fb451136e0fdf182abff5599a08b3c7f6ef0d36a55aaf89634c/hosts",
