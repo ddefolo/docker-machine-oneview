@@ -21,7 +21,7 @@ clone git github.com/vdemeester/shakers 3c10293ce22b900c27acad7b28656196fcc2f73b
 clone git golang.org/x/net 3cffabab72adf04f8e3b01c5baf775361837b5fe https://github.com/golang/net.git
 
 #get libnetwork packages
-clone git github.com/docker/libnetwork c92c21bca42a3581fd108d3222848faa16372249
+clone git github.com/docker/libnetwork 5fc6ba506daa7914f4d58befb38480ec8e9c9f70
 clone git github.com/armon/go-metrics eb0af217e5e9747e41dd5303755356b62d28e3ec
 clone git github.com/hashicorp/go-msgpack 71c2886f5a673a35f909803f38ece5810165097b
 clone git github.com/hashicorp/memberlist 9a1e242e454d2443df330bdd51a436d5a9058fc4
@@ -36,7 +36,7 @@ clone git github.com/coreos/etcd v2.2.0
 fix_rewritten_imports github.com/coreos/etcd
 clone git github.com/ugorji/go 5abd4e96a45c386928ed2ca2a7ef63e2533e18ec
 clone git github.com/hashicorp/consul v0.5.2
-clone git github.com/boltdb/bolt v1.0
+clone git github.com/boltdb/bolt v1.1.0
 
 # get graph and distribution packages
 clone git github.com/docker/distribution 20c4b7a1805a52753dfd593ee1cc35558722a0ce # docker/1.9 branch
@@ -64,7 +64,7 @@ clone git github.com/tinylib/msgp 75ee40d2601edf122ef667e2a07d600d4c44490c
 clone git gopkg.in/fsnotify.v1 v1.2.0
 
 # awslogs deps
-clone git github.com/aws/aws-sdk-go v0.7.1
+clone git github.com/aws/aws-sdk-go v0.9.9
 clone git github.com/vaughan0/go-ini a98ad7ee00ec53921f08832bc06ecf7fd600e6a1
 
 clean

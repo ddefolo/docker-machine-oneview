@@ -265,6 +265,7 @@ func (c *controller) networkWatchLoop(nw *netWatch, ep *endpoint, ecCh <-chan da
 			var addEp []*endpoint
 
 			delEpMap := make(map[string]*endpoint)
+			renameEpMap := make(map[string]bool)
 			for k, v := range nw.remoteEps {
 				delEpMap[k] = v
 			}
@@ -274,24 +275,39 @@ func (c *controller) networkWatchLoop(nw *netWatch, ep *endpoint, ecCh <-chan da
 					continue
 				}
 
-				if _, ok := nw.remoteEps[lEp.ID()]; ok {
-					delete(delEpMap, lEp.ID())
-					continue
+				if ep, ok := nw.remoteEps[lEp.ID()]; ok {
+					// On a container rename EP ID will remain
+					// the same but the name will change. service
+					// records should reflect the change.
+					// Keep old EP entry in the delEpMap and add
+					// EP from the store (which has the new name)
+					// into the new list
+					if lEp.name == ep.name {
+						delete(delEpMap, lEp.ID())
+						continue
+					}
+					renameEpMap[lEp.ID()] = true
 				}
-
 				nw.remoteEps[lEp.ID()] = lEp
 				addEp = append(addEp, lEp)
+			}
 
+			// EPs whose name are to be deleted from the svc records
+			// should also be removed from nw's remote EP list, except
+			// the ones that are getting renamed.
+			for _, lEp := range delEpMap {
+				if !renameEpMap[lEp.ID()] {
+					delete(nw.remoteEps, lEp.ID())
+				}
 			}
 			c.Unlock()
-
-			for _, lEp := range addEp {
-				ep.getNetwork().updateSvcRecord(lEp, c.getLocalEps(nw), true)
-			}
 
 			for _, lEp := range delEpMap {
 				ep.getNetwork().updateSvcRecord(lEp, c.getLocalEps(nw), false)
 
+			}
+			for _, lEp := range addEp {
+				ep.getNetwork().updateSvcRecord(lEp, c.getLocalEps(nw), true)
 			}
 		}
 	}
@@ -378,13 +394,13 @@ func (c *controller) processEndpointDelete(nmap map[string]*netWatch, ep *endpoi
 	c.Unlock()
 }
 
-func (c *controller) watchLoop(nmap map[string]*netWatch) {
+func (c *controller) watchLoop() {
 	for {
 		select {
 		case ep := <-c.watchCh:
-			c.processEndpointCreate(nmap, ep)
+			c.processEndpointCreate(c.nmap, ep)
 		case ep := <-c.unWatchCh:
-			c.processEndpointDelete(nmap, ep)
+			c.processEndpointDelete(c.nmap, ep)
 		}
 	}
 }
@@ -392,7 +408,7 @@ func (c *controller) watchLoop(nmap map[string]*netWatch) {
 func (c *controller) startWatch() {
 	c.watchCh = make(chan *endpoint)
 	c.unWatchCh = make(chan *endpoint)
-	nmap := make(map[string]*netWatch)
+	c.nmap = make(map[string]*netWatch)
 
-	go c.watchLoop(nmap)
+	go c.watchLoop()
 }

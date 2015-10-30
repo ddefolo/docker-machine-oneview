@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/versions/v1p20"
 	"github.com/docker/docker/pkg/integration/checker"
 	"github.com/docker/libnetwork/driverapi"
 	remoteapi "github.com/docker/libnetwork/drivers/remote/api"
@@ -20,6 +21,7 @@ import (
 	remoteipam "github.com/docker/libnetwork/ipams/remote/api"
 	"github.com/docker/libnetwork/netlabel"
 	"github.com/go-check/check"
+	"github.com/vishvananda/netlink"
 )
 
 const dummyNetworkDriver = "dummy-network-driver"
@@ -76,6 +78,36 @@ func (s *DockerNetworkSuite) SetUpSuite(c *check.C) {
 
 	mux.HandleFunc(fmt.Sprintf("/%s.DeleteNetwork", driverapi.NetworkPluginEndpointType), func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/vnd.docker.plugins.v1+json")
+		fmt.Fprintf(w, "null")
+	})
+
+	mux.HandleFunc(fmt.Sprintf("/%s.CreateEndpoint", driverapi.NetworkPluginEndpointType), func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/vnd.docker.plugins.v1+json")
+		fmt.Fprintf(w, `{"Interface":{"MacAddress":"a0:b1:c2:d3:e4:f5"}}`)
+	})
+
+	mux.HandleFunc(fmt.Sprintf("/%s.Join", driverapi.NetworkPluginEndpointType), func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/vnd.docker.plugins.v1+json")
+
+		veth := &netlink.Veth{
+			LinkAttrs: netlink.LinkAttrs{Name: "randomIfName", TxQLen: 0}, PeerName: "cnt0"}
+		if err := netlink.LinkAdd(veth); err != nil {
+			fmt.Fprintf(w, `{"Error":"failed to add veth pair: `+err.Error()+`"}`)
+		} else {
+			fmt.Fprintf(w, `{"InterfaceName":{ "SrcName":"cnt0", "DstPrefix":"veth"}}`)
+		}
+	})
+
+	mux.HandleFunc(fmt.Sprintf("/%s.Leave", driverapi.NetworkPluginEndpointType), func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/vnd.docker.plugins.v1+json")
+		fmt.Fprintf(w, "null")
+	})
+
+	mux.HandleFunc(fmt.Sprintf("/%s.DeleteEndpoint", driverapi.NetworkPluginEndpointType), func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/vnd.docker.plugins.v1+json")
+		if link, err := netlink.LinkByName("cnt0"); err == nil {
+			netlink.LinkDel(link)
+		}
 		fmt.Fprintf(w, "null")
 	})
 
@@ -201,7 +233,8 @@ func isNwPresent(c *check.C, name string) bool {
 	out, _ := dockerCmd(c, "network", "ls")
 	lines := strings.Split(out, "\n")
 	for i := 1; i < len(lines)-1; i++ {
-		if strings.Contains(lines[i], name) {
+		netFields := strings.Fields(lines[i])
+		if netFields[1] == name {
 			return true
 		}
 	}
@@ -284,7 +317,7 @@ func (s *DockerNetworkSuite) TestDockerNetworkConnectDisconnect(c *check.C) {
 	// check if container IP matches network inspect
 	ip, _, err := net.ParseCIDR(nr.Containers[containerID].IPv4Address)
 	c.Assert(err, check.IsNil)
-	containerIP := findContainerIP(c, "test")
+	containerIP := findContainerIP(c, "test", "test")
 	c.Assert(ip.String(), checker.Equals, containerIP)
 
 	// disconnect container from the network
@@ -410,6 +443,7 @@ func (s *DockerNetworkSuite) TestDockerNetworkDriverOptions(c *check.C) {
 }
 
 func (s *DockerDaemonSuite) TestDockerNetworkNoDiscoveryDefaultBridgeNetwork(c *check.C) {
+	testRequires(c, ExecSupport)
 	// On default bridge network built-in service discovery should not happen
 	hostsFile := "/etc/hosts"
 	bridgeName := "external-bridge"
@@ -431,11 +465,11 @@ func (s *DockerDaemonSuite) TestDockerNetworkNoDiscoveryDefaultBridgeNetwork(c *
 	hosts, err := s.d.Cmd("exec", cid1, "cat", hostsFile)
 	c.Assert(err, checker.IsNil)
 
-	out, err = s.d.Cmd("run", "-d", "busybox", "top")
+	out, err = s.d.Cmd("run", "-d", "--name", "container2", "busybox", "top")
 	c.Assert(err, check.IsNil)
 	cid2 := strings.TrimSpace(out)
 
-	// verify first container's etc/hosts file has not changed after spawning second container
+	// verify first container's etc/hosts file has not changed after spawning the second named container
 	hostsPost, err := s.d.Cmd("exec", cid1, "cat", hostsFile)
 	c.Assert(err, checker.IsNil)
 	c.Assert(string(hosts), checker.Equals, string(hostsPost),
@@ -484,4 +518,155 @@ func (s *DockerDaemonSuite) TestDockerNetworkNoDiscoveryDefaultBridgeNetwork(c *
 	c.Assert(err, checker.IsNil)
 	c.Assert(string(hosts), checker.Equals, string(hostsPost),
 		check.Commentf("Unexpected %s content after disconnecting from second network", hostsFile))
+}
+
+func (s *DockerNetworkSuite) TestDockerNetworkAnonymousEndpoint(c *check.C) {
+	testRequires(c, ExecSupport)
+	hostsFile := "/etc/hosts"
+	cstmBridgeNw := "custom-bridge-nw"
+
+	dockerCmd(c, "network", "create", "-d", "bridge", cstmBridgeNw)
+	assertNwIsAvailable(c, cstmBridgeNw)
+
+	// run two anonymous containers and store their etc/hosts content
+	out, _ := dockerCmd(c, "run", "-d", "--net", cstmBridgeNw, "busybox", "top")
+	cid1 := strings.TrimSpace(out)
+
+	hosts1, err := readContainerFileWithExec(cid1, hostsFile)
+	c.Assert(err, checker.IsNil)
+
+	out, _ = dockerCmd(c, "run", "-d", "--net", cstmBridgeNw, "busybox", "top")
+	cid2 := strings.TrimSpace(out)
+
+	hosts2, err := readContainerFileWithExec(cid2, hostsFile)
+	c.Assert(err, checker.IsNil)
+
+	// verify first container etc/hosts file has not changed
+	hosts1post, err := readContainerFileWithExec(cid1, hostsFile)
+	c.Assert(err, checker.IsNil)
+	c.Assert(string(hosts1), checker.Equals, string(hosts1post),
+		check.Commentf("Unexpected %s change on anonymous container creation", hostsFile))
+
+	// start a named container
+	cName := "AnyName"
+	out, _ = dockerCmd(c, "run", "-d", "--net", cstmBridgeNw, "--name", cName, "busybox", "top")
+	cid3 := strings.TrimSpace(out)
+
+	// verify etc/hosts file for first two containers contains the named container entry
+	hosts1post, err = readContainerFileWithExec(cid1, hostsFile)
+	c.Assert(err, checker.IsNil)
+	c.Assert(string(hosts1post), checker.Contains, cName,
+		check.Commentf("Container 1  %s file does not contain entries for named container %q: %s", hostsFile, cName, string(hosts1post)))
+
+	hosts2post, err := readContainerFileWithExec(cid2, hostsFile)
+	c.Assert(err, checker.IsNil)
+	c.Assert(string(hosts2post), checker.Contains, cName,
+		check.Commentf("Container 2  %s file does not contain entries for named container %q: %s", hostsFile, cName, string(hosts2post)))
+
+	// Stop named container and verify first two containers' etc/hosts entries are back to original
+	dockerCmd(c, "stop", cid3)
+	hosts1post, err = readContainerFileWithExec(cid1, hostsFile)
+	c.Assert(err, checker.IsNil)
+	c.Assert(string(hosts1), checker.Equals, string(hosts1post),
+		check.Commentf("Unexpected %s change on anonymous container creation", hostsFile))
+
+	hosts2post, err = readContainerFileWithExec(cid2, hostsFile)
+	c.Assert(err, checker.IsNil)
+	c.Assert(string(hosts2), checker.Equals, string(hosts2post),
+		check.Commentf("Unexpected %s change on anonymous container creation", hostsFile))
+}
+
+func (s *DockerNetworkSuite) TestDockerNetworkLinkOndefaultNetworkOnly(c *check.C) {
+	// Link feature must work only on default network, and not across networks
+	cnt1 := "container1"
+	cnt2 := "container2"
+	network := "anotherbridge"
+
+	// Run first container on default network
+	dockerCmd(c, "run", "-d", "--name", cnt1, "busybox", "top")
+
+	// Create another network and run the second container on it
+	dockerCmd(c, "network", "create", network)
+	assertNwIsAvailable(c, network)
+	dockerCmd(c, "run", "-d", "--net", network, "--name", cnt2, "busybox", "top")
+
+	// Try launching a container on default network, linking to the first container. Must succeed
+	dockerCmd(c, "run", "-d", "--link", fmt.Sprintf("%s:%s", cnt1, cnt1), "busybox", "top")
+
+	// Try launching a container on default network, linking to the second container. Must fail
+	_, _, err := dockerCmdWithError("run", "-d", "--link", fmt.Sprintf("%s:%s", cnt2, cnt2), "busybox", "top")
+	c.Assert(err, checker.NotNil)
+
+	// Connect second container to default network. Now a container on default network can link to it
+	dockerCmd(c, "network", "connect", "bridge", cnt2)
+	dockerCmd(c, "run", "-d", "--link", fmt.Sprintf("%s:%s", cnt2, cnt2), "busybox", "top")
+}
+
+func (s *DockerNetworkSuite) TestDockerNetworkOverlayPortMapping(c *check.C) {
+	// Verify exposed ports are present in ps output when running a container on
+	// a network managed by a driver which does not provide the default gateway
+	// for the container
+	nwn := "ov"
+	ctn := "bb"
+	port1 := 80
+	port2 := 443
+	expose1 := fmt.Sprintf("--expose=%d", port1)
+	expose2 := fmt.Sprintf("--expose=%d", port2)
+
+	dockerCmd(c, "network", "create", "-d", dummyNetworkDriver, nwn)
+	assertNwIsAvailable(c, nwn)
+
+	dockerCmd(c, "run", "-d", "--net", nwn, "--name", ctn, expose1, expose2, "busybox", "top")
+
+	// Check docker ps o/p for last created container reports the unpublished ports
+	unpPort1 := fmt.Sprintf("%d/tcp", port1)
+	unpPort2 := fmt.Sprintf("%d/tcp", port2)
+	out, _ := dockerCmd(c, "ps", "-n=1")
+	// Missing unpublished ports in docker ps output
+	c.Assert(out, checker.Contains, unpPort1)
+	// Missing unpublished ports in docker ps output
+	c.Assert(out, checker.Contains, unpPort2)
+}
+
+func (s *DockerNetworkSuite) TestDockerNetworkMacInspect(c *check.C) {
+	// Verify endpoint MAC address is correctly populated in container's network settings
+	nwn := "ov"
+	ctn := "bb"
+
+	dockerCmd(c, "network", "create", "-d", dummyNetworkDriver, nwn)
+	assertNwIsAvailable(c, nwn)
+
+	dockerCmd(c, "run", "-d", "--net", nwn, "--name", ctn, "busybox", "top")
+
+	mac, err := inspectField(ctn, "NetworkSettings.Networks."+nwn+".MacAddress")
+	c.Assert(err, checker.IsNil)
+	c.Assert(mac, checker.Equals, "a0:b1:c2:d3:e4:f5")
+}
+
+func (s *DockerSuite) TestInspectApiMultipeNetworks(c *check.C) {
+	dockerCmd(c, "network", "create", "mybridge1")
+	dockerCmd(c, "network", "create", "mybridge2")
+	out, _ := dockerCmd(c, "run", "-d", "busybox", "top")
+	id := strings.TrimSpace(out)
+	c.Assert(waitRun(id), check.IsNil)
+
+	dockerCmd(c, "network", "connect", "mybridge1", id)
+	dockerCmd(c, "network", "connect", "mybridge2", id)
+
+	body := getInspectBody(c, "v1.20", id)
+	var inspect120 v1p20.ContainerJSON
+	err := json.Unmarshal(body, &inspect120)
+	c.Assert(err, checker.IsNil)
+
+	versionedIP := inspect120.NetworkSettings.IPAddress
+
+	body = getInspectBody(c, "v1.21", id)
+	var inspect121 types.ContainerJSON
+	err = json.Unmarshal(body, &inspect121)
+	c.Assert(err, checker.IsNil)
+	c.Assert(inspect121.NetworkSettings.Networks, checker.HasLen, 3)
+
+	bridge := inspect121.NetworkSettings.Networks["bridge"]
+	c.Assert(bridge.IPAddress, checker.Equals, versionedIP)
+	c.Assert(bridge.IPAddress, checker.Equals, inspect121.NetworkSettings.IPAddress)
 }

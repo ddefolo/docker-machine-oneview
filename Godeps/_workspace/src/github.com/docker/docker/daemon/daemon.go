@@ -39,6 +39,7 @@ import (
 	"github.com/docker/docker/pkg/idtools"
 	"github.com/docker/docker/pkg/ioutils"
 	"github.com/docker/docker/pkg/jsonmessage"
+	"github.com/docker/docker/pkg/mount"
 	"github.com/docker/docker/pkg/namesgenerator"
 	"github.com/docker/docker/pkg/nat"
 	"github.com/docker/docker/pkg/parsers/filters"
@@ -177,10 +178,10 @@ func (daemon *Daemon) load(id string) (*Container, error) {
 	}
 
 	if container.ID != id {
-		return &container, fmt.Errorf("Container %s is stored at %s", container.ID, id)
+		return container, fmt.Errorf("Container %s is stored at %s", container.ID, id)
 	}
 
-	return &container, nil
+	return container, nil
 }
 
 // Register makes a container object usable by the daemon as <container.ID>
@@ -219,11 +220,13 @@ func (daemon *Daemon) Register(container *Container) error {
 		container.setStoppedLocking(&execdriver.ExitStatus{ExitCode: 137})
 		// use the current driver and ensure that the container is dead x.x
 		cmd := &execdriver.Command{
-			ID: container.ID,
+			CommonCommand: execdriver.CommonCommand{
+				ID: container.ID,
+			},
 		}
 		daemon.execDriver.Terminate(cmd)
 
-		if err := container.unmountIpcMounts(); err != nil {
+		if err := container.unmountIpcMounts(mount.Unmount); err != nil {
 			logrus.Errorf("%s: Failed to umount ipc filesystems: %v", container.ID, err)
 		}
 		if err := container.Unmount(); err != nil {
@@ -407,20 +410,12 @@ func (daemon *Daemon) reserveName(id, name string) (string, error) {
 
 		conflictingContainer, err := daemon.GetByName(name)
 		if err != nil {
-			if strings.Contains(err.Error(), "Could not find entity") {
-				return "", err
-			}
-
-			// Remove name and continue starting the container
-			if err := daemon.containerGraphDB.Delete(name); err != nil {
-				return "", err
-			}
-		} else {
-			nameAsKnownByUser := strings.TrimPrefix(name, "/")
-			return "", fmt.Errorf(
-				"Conflict. The name %q is already in use by container %s. You have to remove (or rename) that container to be able to reuse that name.", nameAsKnownByUser,
-				stringid.TruncateID(conflictingContainer.ID))
+			return "", err
 		}
+		return "", fmt.Errorf(
+			"Conflict. The name %q is already in use by container %s. You have to remove (or rename) that container to be able to reuse that name.", strings.TrimPrefix(name, "/"),
+			stringid.TruncateID(conflictingContainer.ID))
+
 	}
 	return name, nil
 }
@@ -458,27 +453,19 @@ func (daemon *Daemon) generateHostname(id string, config *runconfig.Config) {
 }
 
 func (daemon *Daemon) getEntrypointAndArgs(configEntrypoint *stringutils.StrSlice, configCmd *stringutils.StrSlice) (string, []string) {
-	var (
-		entrypoint string
-		args       []string
-	)
-
 	cmdSlice := configCmd.Slice()
 	if configEntrypoint.Len() != 0 {
 		eSlice := configEntrypoint.Slice()
-		entrypoint = eSlice[0]
-		args = append(eSlice[1:], cmdSlice...)
-	} else {
-		entrypoint = cmdSlice[0]
-		args = cmdSlice[1:]
+		return eSlice[0], append(eSlice[1:], cmdSlice...)
 	}
-	return entrypoint, args
+	return cmdSlice[0], cmdSlice[1:]
 }
 
 func (daemon *Daemon) newContainer(name string, config *runconfig.Config, imgID string) (*Container, error) {
 	var (
-		id  string
-		err error
+		id             string
+		err            error
+		noExplicitName = name == ""
 	)
 	id, name, err = daemon.generateIDAndName(name)
 	if err != nil {
@@ -495,12 +482,12 @@ func (daemon *Daemon) newContainer(name string, config *runconfig.Config, imgID 
 	base.Config = config
 	base.hostConfig = &runconfig.HostConfig{}
 	base.ImageID = imgID
-	base.NetworkSettings = &network.Settings{}
+	base.NetworkSettings = &network.Settings{IsAnonymousEndpoint: noExplicitName}
 	base.Name = name
 	base.Driver = daemon.driver.String()
 	base.ExecDriver = daemon.execDriver.Name()
 
-	return &base, err
+	return base, err
 }
 
 // GetFullContainerName returns a constructed container name. I think
@@ -767,10 +754,17 @@ func NewDaemon(config *Config, registryService *registry.Service) (daemon *Daemo
 	// initialized, the daemon is registered and we can store the discovery backend as its read-only
 	// DiscoveryWatcher version.
 	if config.ClusterStore != "" && config.ClusterAdvertise != "" {
-		var err error
-		if d.discoveryWatcher, err = initDiscovery(config.ClusterStore, config.ClusterAdvertise, config.ClusterOpts); err != nil {
+		advertise, err := discovery.ParseAdvertise(config.ClusterStore, config.ClusterAdvertise)
+		if err != nil {
+			return nil, fmt.Errorf("discovery advertise parsing failed (%v)", err)
+		}
+		config.ClusterAdvertise = advertise
+		d.discoveryWatcher, err = initDiscovery(config.ClusterStore, config.ClusterAdvertise, config.ClusterOpts)
+		if err != nil {
 			return nil, fmt.Errorf("discovery initialization failed (%v)", err)
 		}
+	} else if config.ClusterAdvertise != "" {
+		return nil, fmt.Errorf("invalid cluster configuration. --cluster-advertise must be accompanied by --cluster-store configuration")
 	}
 
 	d.netController, err = d.initNetworkController(config)
@@ -839,6 +833,45 @@ func NewDaemon(config *Config, registryService *registry.Service) (daemon *Daemo
 	return d, nil
 }
 
+func stopContainer(c *Container) error {
+	// TODO(windows): Handle docker restart with paused containers
+	if c.isPaused() {
+		// To terminate a process in freezer cgroup, we should send
+		// SIGTERM to this process then unfreeze it, and the process will
+		// force to terminate immediately.
+		logrus.Debugf("Found container %s is paused, sending SIGTERM before unpause it", c.ID)
+		sig, ok := signal.SignalMap["TERM"]
+		if !ok {
+			return fmt.Errorf("System doesn not support SIGTERM")
+		}
+		if err := c.daemon.kill(c, int(sig)); err != nil {
+			return fmt.Errorf("sending SIGTERM to container %s with error: %v", c.ID, err)
+		}
+		if err := c.unpause(); err != nil {
+			return fmt.Errorf("Failed to unpause container %s with error: %v", c.ID, err)
+		}
+		if _, err := c.WaitStop(10 * time.Second); err != nil {
+			logrus.Debugf("container %s failed to exit in 10 second of SIGTERM, sending SIGKILL to force", c.ID)
+			sig, ok := signal.SignalMap["KILL"]
+			if !ok {
+				return fmt.Errorf("System does not support SIGKILL")
+			}
+			if err := c.daemon.kill(c, int(sig)); err != nil {
+				logrus.Errorf("Failed to SIGKILL container %s", c.ID)
+			}
+			c.WaitStop(-1 * time.Second)
+			return err
+		}
+	}
+	// If container failed to exit in 10 seconds of SIGTERM, then using the force
+	if err := c.Stop(10); err != nil {
+		return fmt.Errorf("Stop container %s with error: %v", c.ID, err)
+	}
+
+	c.WaitStop(-1 * time.Second)
+	return nil
+}
+
 // Shutdown stops the daemon.
 func (daemon *Daemon) Shutdown() error {
 	daemon.shutdown = true
@@ -846,58 +879,26 @@ func (daemon *Daemon) Shutdown() error {
 		group := sync.WaitGroup{}
 		logrus.Debug("starting clean shutdown of all containers...")
 		for _, container := range daemon.List() {
-			c := container
-			if c.IsRunning() {
-				logrus.Debugf("stopping %s", c.ID)
-				group.Add(1)
-
-				go func() {
-					defer group.Done()
-					// TODO(windows): Handle docker restart with paused containers
-					if c.isPaused() {
-						// To terminate a process in freezer cgroup, we should send
-						// SIGTERM to this process then unfreeze it, and the process will
-						// force to terminate immediately.
-						logrus.Debugf("Found container %s is paused, sending SIGTERM before unpause it", c.ID)
-						sig, ok := signal.SignalMap["TERM"]
-						if !ok {
-							logrus.Warnf("System does not support SIGTERM")
-							return
-						}
-						if err := daemon.kill(c, int(sig)); err != nil {
-							logrus.Debugf("sending SIGTERM to container %s with error: %v", c.ID, err)
-							return
-						}
-						if err := c.unpause(); err != nil {
-							logrus.Debugf("Failed to unpause container %s with error: %v", c.ID, err)
-							return
-						}
-						if _, err := c.WaitStop(10 * time.Second); err != nil {
-							logrus.Debugf("container %s failed to exit in 10 second of SIGTERM, sending SIGKILL to force", c.ID)
-							sig, ok := signal.SignalMap["KILL"]
-							if !ok {
-								logrus.Warnf("System does not support SIGKILL")
-								return
-							}
-							daemon.kill(c, int(sig))
-						}
-					} else {
-						// If container failed to exit in 10 seconds of SIGTERM, then using the force
-						if err := c.Stop(10); err != nil {
-							logrus.Errorf("Stop container %s with error: %v", c.ID, err)
-						}
-					}
-					c.WaitStop(-1 * time.Second)
-					logrus.Debugf("container stopped %s", c.ID)
-				}()
+			if !container.IsRunning() {
+				continue
 			}
+			logrus.Debugf("stopping %s", container.ID)
+			group.Add(1)
+			go func(c *Container) {
+				defer group.Done()
+				if err := stopContainer(c); err != nil {
+					logrus.Errorf("Stop container error: %v", err)
+					return
+				}
+				logrus.Debugf("container stopped %s", c.ID)
+			}(container)
 		}
 		group.Wait()
+	}
 
-		// trigger libnetwork Stop only if it's initialized
-		if daemon.netController != nil {
-			daemon.netController.Stop()
-		}
+	// trigger libnetwork Stop only if it's initialized
+	if daemon.netController != nil {
+		daemon.netController.Stop()
 	}
 
 	if daemon.containerGraphDB != nil {
@@ -942,8 +943,7 @@ func (daemon *Daemon) Mount(container *Container) error {
 }
 
 func (daemon *Daemon) unmount(container *Container) error {
-	daemon.driver.Put(container.ID)
-	return nil
+	return daemon.driver.Put(container.ID)
 }
 
 func (daemon *Daemon) run(c *Container, pipes *execdriver.Pipes, startCallback execdriver.DriverCallback) (execdriver.ExitStatus, error) {
@@ -964,14 +964,12 @@ func (daemon *Daemon) stats(c *Container) (*execdriver.ResourceStats, error) {
 	return daemon.execDriver.Stats(c.ID)
 }
 
-func (daemon *Daemon) subscribeToContainerStats(c *Container) (chan interface{}, error) {
-	ch := daemon.statsCollector.collect(c)
-	return ch, nil
+func (daemon *Daemon) subscribeToContainerStats(c *Container) chan interface{} {
+	return daemon.statsCollector.collect(c)
 }
 
-func (daemon *Daemon) unsubscribeToContainerStats(c *Container, ch chan interface{}) error {
+func (daemon *Daemon) unsubscribeToContainerStats(c *Container, ch chan interface{}) {
 	daemon.statsCollector.unsubscribe(c, ch)
-	return nil
 }
 
 func (daemon *Daemon) changes(container *Container) ([]archive.Change, error) {
@@ -1004,13 +1002,17 @@ func (daemon *Daemon) createRootfs(container *Container) error {
 	}
 
 	if err := setupInitLayer(initPath, rootUID, rootGID); err != nil {
-		daemon.driver.Put(initID)
+		if err := daemon.driver.Put(initID); err != nil {
+			logrus.Errorf("Failed to Put init layer: %v", err)
+		}
 		return err
 	}
 
 	// We want to unmount init layer before we take snapshot of it
 	// for the actual container.
-	daemon.driver.Put(initID)
+	if err := daemon.driver.Put(initID); err != nil {
+		return err
+	}
 
 	if err := daemon.driver.Create(container.ID, initID); err != nil {
 		return err
@@ -1018,12 +1020,7 @@ func (daemon *Daemon) createRootfs(container *Container) error {
 	return nil
 }
 
-// Graph needs to be removed.
-//
-// FIXME: this is a convenience function for integration tests
-// which need direct access to daemon.graph.
-// Once the tests switch to using engine and jobs, this method
-// can go away.
+// Graph returns *graph.Graph which can be using for layers graph operations.
 func (daemon *Daemon) Graph() *graph.Graph {
 	return daemon.graph
 }

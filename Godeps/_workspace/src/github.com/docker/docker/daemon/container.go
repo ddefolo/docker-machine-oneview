@@ -112,17 +112,21 @@ func (container *Container) fromDisk() error {
 }
 
 func (container *Container) toDisk() error {
-	data, err := json.Marshal(container)
-	if err != nil {
-		return err
-	}
-
 	pth, err := container.jsonPath()
 	if err != nil {
 		return err
 	}
 
-	if err := ioutil.WriteFile(pth, data, 0666); err != nil {
+	jsonSource, err := os.Create(pth)
+	if err != nil {
+		return err
+	}
+	defer jsonSource.Close()
+
+	enc := json.NewEncoder(jsonSource)
+
+	// Save container settings
+	if err := enc.Encode(container); err != nil {
 		return err
 	}
 
@@ -269,7 +273,7 @@ func (container *Container) Start() (err error) {
 		}
 	}()
 
-	if err := container.Mount(); err != nil {
+	if err := container.conditionalMountOnStart(); err != nil {
 		return err
 	}
 
@@ -332,22 +336,16 @@ func (streamConfig *streamConfig) StderrPipe() io.ReadCloser {
 	return ioutils.NewBufReader(reader)
 }
 
-func (container *Container) isNetworkAllocated() bool {
-	return container.NetworkSettings.IPAddress != ""
-}
-
 // cleanup releases any network resources allocated to the container along with any rules
 // around how containers are linked together.  It also unmounts the container's root filesystem.
 func (container *Container) cleanup() {
 	container.releaseNetwork()
 
-	if err := container.unmountIpcMounts(); err != nil {
+	if err := container.unmountIpcMounts(detachMounted); err != nil {
 		logrus.Errorf("%s: Failed to umount ipc filesystems: %v", container.ID, err)
 	}
 
-	if err := container.Unmount(); err != nil {
-		logrus.Errorf("%s: Failed to umount filesystem: %v", container.ID, err)
-	}
+	container.conditionalUnmountOnCleanup()
 
 	for _, eConfig := range container.execCommands.s {
 		container.daemon.unregisterExecCommand(eConfig)
