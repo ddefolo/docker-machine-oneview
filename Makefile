@@ -26,7 +26,7 @@ noop:
 	$(call noop_targets)
 
 build: gen-dockerfile
-test: build
+test: gen-dockerfile
 %:
 		docker build -f $(DOCKER_FILE) -t $(DOCKER_IMAGE_NAME) .
 
