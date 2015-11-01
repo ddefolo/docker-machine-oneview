@@ -6,12 +6,15 @@ GO_GCFLAGS :=
 # PKGS := $(shell go list -tags "$(BUILDTAGS)" ./oneview/... | grep -v "/vendor/" | grep -v "/Godeps/")
 PKGS := ./cmd/... ./oneview/... ./version/...
 
-# Support go1.5 vendoring (let us avoid messing with GOPATH or using godep)
-export GO15VENDOREXPERIMENT = 1
 
 # Resolving binary dependencies for specific targets
 GOLINT_BIN := $(GOPATH)/bin/golint
 GOLINT := $(shell [ -x $(GOLINT_BIN) ] && echo $(GOLINT_BIN) || echo '')
+
+# Support go1.5 vendoring (let us avoid messing with GOPATH or using godep)
+ifneq ($(GO15VENDOREXPERIMENT),1)
+GOPATH := $(GOPATH):$(PREFIX)/Godeps/_workspace
+endif
 
 # Honor debug
 # note when compiling directly on mac with DEBUG option i was getting this error:

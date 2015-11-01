@@ -28,6 +28,7 @@ noop:
 build: gen-dockerfile
 test: gen-dockerfile
 %:
+	  export GO15VENDOREXPERIMENT = 1
 		docker build -f $(DOCKER_FILE) -t $(DOCKER_IMAGE_NAME) .
 
 		test -z '$(shell docker ps -a | grep $(DOCKER_CONTAINER_NAME))' || docker rm -f $(DOCKER_CONTAINER_NAME)
@@ -42,6 +43,7 @@ test: gen-dockerfile
 		    -e TARGET_OS \
 		    -e TARGET_ARCH \
 		    -e PREFIX \
+		    -e GO15VENDOREXPERIMENT \
 		    $(DOCKER_IMAGE_NAME) \
 		    make $@
 
