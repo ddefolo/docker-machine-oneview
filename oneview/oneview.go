@@ -295,10 +295,6 @@ func (d *Driver) Create() error {
 		return err
 	}
 
-	// power on the server, and leave it in that state
-	if err := d.Hardware.PowerOn(); err != nil {
-		return err
-	}
 	// power off let customization bring the server online
 	if err := d.Hardware.PowerOff(); err != nil {
 		return err
