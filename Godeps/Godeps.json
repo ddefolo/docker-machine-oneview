@@ -6,9 +6,14 @@
 		"github.com/docker/machine",
 		"github.com/stretchr/testify/assert",
 		"golang.org/x/crypto/ssh",
-		"github.com/Sirupsen/logrus"
+		"github.com/Sirupsen/logrus",
+		"github.com/Azure/go-ansiterm"
 	],
 	"Deps": [
+		{
+			"ImportPath": "github.com/Azure/go-ansiterm",
+			"Rev": "70b2c90b260171e829f1ebd7c17f600c11858dbe"
+		},
 		{
 			"ImportPath": "github.com/Sirupsen/logrus",
 			"Comment": "v0.8.7-35-gfe6f2b0",

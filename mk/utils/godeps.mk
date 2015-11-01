@@ -4,6 +4,7 @@ GO_PACKAGES := $(GO_PACKAGES) github.com/docker/machine
 GO_PACKAGES := $(GO_PACKAGES) github.com/stretchr/testify/assert
 GO_PACKAGES := $(GO_PACKAGES) golang.org/x/crypto/ssh
 GO_PACKAGES := $(GO_PACKAGES) github.com/Sirupsen/logrus
+GO_PACKAGES := $(GO_PACKAGES) github.com/Azure/go-ansiterm
 
 GO15VENDOREXPERIMENT := 1
 
