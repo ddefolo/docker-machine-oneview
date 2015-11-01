@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"src/code.google.com/p/go/src/pkg/archive/tar"
+	"github.com/docker/docker/vendor/src/code.google.com/p/go/src/pkg/archive/tar"
 )
 
 var testUntarFns = map[string]func(string, io.Reader) error{

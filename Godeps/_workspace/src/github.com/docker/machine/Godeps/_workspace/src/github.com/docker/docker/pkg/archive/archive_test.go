@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"src/code.google.com/p/go/src/pkg/archive/tar"
+	"github.com/docker/docker/vendor/src/code.google.com/p/go/src/pkg/archive/tar"
 )
 
 func TestCmdStreamLargeStderr(t *testing.T) {

@@ -1,13 +1,24 @@
 {
-	"ImportPath": "_/home/eraigosa/git/HewlettPackard/patch/docker-machine-oneview",
-	"GoVersion": "go1.5",
+	"ImportPath": "_/home/wenlock/git/HewlettPackard/docker-machine-oneview",
+	"GoVersion": "go1.5.1",
 	"Packages": [
 		"github.com/docker/docker/pkg/term",
 		"github.com/docker/machine",
 		"github.com/stretchr/testify/assert",
-		"golang.org/x/crypto/ssh"
+		"golang.org/x/crypto/ssh",
+		"github.com/Sirupsen/logrus",
+		"github.com/Azure/go-ansiterm"
 	],
 	"Deps": [
+		{
+			"ImportPath": "github.com/Azure/go-ansiterm",
+			"Rev": "70b2c90b260171e829f1ebd7c17f600c11858dbe"
+		},
+		{
+			"ImportPath": "github.com/Sirupsen/logrus",
+			"Comment": "v0.8.7-35-gfe6f2b0",
+			"Rev": "fe6f2b03125e4fcafb21406381010e363a072c80"
+		},
 		{
 			"ImportPath": "github.com/docker/docker/pkg/term",
 			"Comment": "v1.4.1-7166-g75128c4",
