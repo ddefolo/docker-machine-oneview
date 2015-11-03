@@ -57,7 +57,7 @@ include mk/validate.mk
 default: build
 # Build native machine and all drivers
 # TODO: cleanup build: build-machine build-plugins
-build: build-x
+build: golink-oneview-golang build-x
 
 #TODO: cleanup
 # Just build native machine itself
@@ -69,7 +69,7 @@ cross: build-x
 
 clean: coverage-clean build-clean
 test: check test-short
-check: dco fmt vet lint
+check: golink-oneview-golang dco fmt vet lint
 validate: check test-short test-long
 install:
 	cp ./bin/docker-machine* /usr/local/bin/

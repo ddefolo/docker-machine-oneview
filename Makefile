@@ -8,8 +8,10 @@ include Makefile.inc
 
 ifneq (,$(findstring test-integration,$(MAKECMDGOALS)))
 	include mk/main.mk
+	include mk/utils/oneview.mk
 else ifeq ($(USE_CONTAINER),)
 	include mk/main.mk
+	include mk/utils/oneview.mk
 else
 # Otherwise, with docker, swallow all targets and forward into a container
 DOCKER_IMAGE_NAME := "docker-machine-build"
@@ -17,6 +19,8 @@ DOCKER_CONTAINER_NAME := docker-machine-build-container
 # get the dockerfile from docker/machine project so we stay in sync with the versions they use for go
 DOCKER_FILE_URL := "https://raw.githubusercontent.com/docker/machine/master/Dockerfile"
 DOCKER_FILE := .dockerfile.machine
+
+include mk/utils/oneview.mk
 
 noop:
 	@echo When using 'USE_CONTAINER' use a "make <target>"
@@ -26,8 +30,8 @@ noop:
 	$(call noop_targets)
 
 clean: gen-dockerfile
-build: gen-dockerfile
-test: gen-dockerfile
+build: golink-oneview-golang gen-dockerfile
+test: golink-oneview-golang gen-dockerfile
 %:
 		export GO15VENDOREXPERIMENT=1
 		docker build -f $(DOCKER_FILE) -t $(DOCKER_IMAGE_NAME) .
