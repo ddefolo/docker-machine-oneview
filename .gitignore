@@ -9,3 +9,4 @@ docker-machine*
 .idea/
 ./bin
 cover
+Godeps/_workspace/src/github.com/HewlettPackard/
