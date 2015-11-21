@@ -11,7 +11,7 @@ parent="smn_machine_drivers"
 # HP OneView
 Create machines using HP OneView API 1.20
 
-![](/docs/drivers/img/DockerMachineOneView.png)
+![](/docs/img/DockerMachineOneView.png)
 
 ## Pre-Req:
 
