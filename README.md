@@ -1,5 +1,7 @@
 # HPE Docker Machine OneView plugin
 
+[![Build Status](https://travis-ci.org/HewlettPackard/docker-machine-oneview.svg?branch=master)](https://travis-ci.org/HewlettPackard/docker-machine-oneview)
+
 The Docker Machine plugin for HPE OneView automates the provisioning of physical infrastructure on-demand, from a private cloud using templates from HPE OneView to enable customers to treat infrastructure-as-code.  
 
 ## Instructions and Setup Steps
