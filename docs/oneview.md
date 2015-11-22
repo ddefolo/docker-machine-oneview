@@ -13,6 +13,10 @@ Create machines using HP OneView API 1.20
 
 ![](/docs/img/DockerMachineOneView.png)
 
+[Automated Deployment of Docker
+Hosts on Bare-metal
+Infrastructure](http://h20195.www2.hp.com/V2/GetDocument.aspx?docname=4AA6-2595ENW&cc=us&lc=en)
+
 ## Pre-Req:
 
 * setup enclosure and server profile
