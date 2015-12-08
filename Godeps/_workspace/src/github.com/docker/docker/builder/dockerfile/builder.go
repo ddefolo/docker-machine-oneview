@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/builder"
 	"github.com/docker/docker/builder/dockerfile/parser"
 	"github.com/docker/docker/daemon"
@@ -60,6 +61,7 @@ type Config struct {
 
 	Memory       int64
 	MemorySwap   int64
+	ShmSize      *int64
 	CPUShares    int64
 	CPUPeriod    int64
 	CPUQuota     int64
@@ -266,7 +268,7 @@ func Commit(containerName string, d *daemon.Daemon, c *CommitConfig) (string, er
 		return "", err
 	}
 
-	commitCfg := &daemon.ContainerCommitConfig{
+	commitCfg := &types.ContainerCommitConfig{
 		Pause:        c.Pause,
 		Repo:         c.Repo,
 		Tag:          c.Tag,
@@ -276,9 +278,9 @@ func Commit(containerName string, d *daemon.Daemon, c *CommitConfig) (string, er
 		MergeConfigs: true,
 	}
 
-	img, err := d.Commit(containerName, commitCfg)
+	imgID, err := d.Commit(containerName, commitCfg)
 	if err != nil {
 		return "", err
 	}
-	return img.ID, nil
+	return imgID, nil
 }

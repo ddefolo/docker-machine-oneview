@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"strings"
 	"text/template"
@@ -26,7 +27,7 @@ var funcMap = template.FuncMap{
 // Usage: docker inspect [OPTIONS] CONTAINER|IMAGE [CONTAINER|IMAGE...]
 func (cli *DockerCli) CmdInspect(args ...string) error {
 	cmd := Cli.Subcmd("inspect", []string{"CONTAINER|IMAGE [CONTAINER|IMAGE...]"}, Cli.DockerCommands["inspect"].Description, true)
-	tmplStr := cmd.String([]string{"f", "#format", "-format"}, "", "Format the output using the given go template")
+	tmplStr := cmd.String([]string{"f", "-format"}, "", "Format the output using the given go template")
 	inspectType := cmd.String([]string{"-type"}, "", "Return JSON for specified type, (e.g image or container)")
 	size := cmd.Bool([]string{"s", "-size"}, false, "Display total file sizes if the type is container")
 	cmd.Require(flag.Min, 1)
@@ -36,6 +37,7 @@ func (cli *DockerCli) CmdInspect(args ...string) error {
 	var tmpl *template.Template
 	var err error
 	var obj []byte
+	var statusCode int
 
 	if *tmplStr != "" {
 		if tmpl, err = template.New("").Funcs(funcMap).Parse(*tmplStr); err != nil {
@@ -60,13 +62,13 @@ func (cli *DockerCli) CmdInspect(args ...string) error {
 
 	for _, name := range cmd.Args() {
 		if *inspectType == "" || *inspectType == "container" {
-			obj, _, err = readBody(cli.call("GET", "/containers/"+name+"/json?"+v.Encode(), nil, nil))
+			obj, statusCode, err = readBody(cli.call("GET", "/containers/"+name+"/json?"+v.Encode(), nil, nil))
 			if err != nil {
 				if err == errConnectionFailed {
 					return err
 				}
 				if *inspectType == "container" {
-					if strings.Contains(err.Error(), "No such") {
+					if statusCode == http.StatusNotFound {
 						fmt.Fprintf(cli.err, "Error: No such container: %s\n", name)
 					} else {
 						fmt.Fprintf(cli.err, "%s", err)
@@ -78,13 +80,13 @@ func (cli *DockerCli) CmdInspect(args ...string) error {
 		}
 
 		if obj == nil && (*inspectType == "" || *inspectType == "image") {
-			obj, _, err = readBody(cli.call("GET", "/images/"+name+"/json", nil, nil))
+			obj, statusCode, err = readBody(cli.call("GET", "/images/"+name+"/json", nil, nil))
 			isImage = true
 			if err != nil {
 				if err == errConnectionFailed {
 					return err
 				}
-				if strings.Contains(err.Error(), "No such") {
+				if statusCode == http.StatusNotFound {
 					if *inspectType == "" {
 						fmt.Fprintf(cli.err, "Error: No such image or container: %s\n", name)
 					} else {
