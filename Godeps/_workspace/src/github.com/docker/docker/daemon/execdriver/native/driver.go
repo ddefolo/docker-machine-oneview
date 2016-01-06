@@ -16,6 +16,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/daemon/execdriver"
+	"github.com/docker/docker/daemon/execdriver/native/template"
 	"github.com/docker/docker/pkg/parsers"
 	"github.com/docker/docker/pkg/pools"
 	"github.com/docker/docker/pkg/reexec"
@@ -89,6 +90,7 @@ func NewDriver(root string, options []string) (*Driver, error) {
 			case "systemd":
 				if systemd.UseSystemd() {
 					cgm = libcontainer.SystemdCgroups
+					template.SystemdCgroups = true
 				} else {
 					// warn them that they chose the wrong driver
 					logrus.Warn("You cannot use systemd as native.cgroupdriver, using cgroupfs instead")
@@ -394,6 +396,26 @@ func (d *Driver) Stats(id string) (*execdriver.ResourceStats, error) {
 		Read:        now,
 		MemoryLimit: memoryLimit,
 	}, nil
+}
+
+// Update updates configs for a container
+func (d *Driver) Update(c *execdriver.Command) error {
+	d.Lock()
+	cont := d.activeContainers[c.ID]
+	d.Unlock()
+	if cont == nil {
+		return execdriver.ErrNotRunning
+	}
+	config := cont.Config()
+	if err := execdriver.SetupCgroups(&config, c); err != nil {
+		return err
+	}
+
+	if err := cont.Set(config); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // TtyConsole implements the exec driver Terminal interface.

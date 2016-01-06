@@ -16,10 +16,10 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
+	containertypes "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/pkg/integration"
 	"github.com/docker/docker/pkg/integration/checker"
 	"github.com/docker/docker/pkg/stringid"
-	"github.com/docker/docker/runconfig"
 	"github.com/go-check/check"
 )
 
@@ -68,6 +68,7 @@ func (s *DockerSuite) TestContainerApiGetJSONNoFieldsOmitted(c *check.C) {
 		"Ports",
 		"Labels",
 		"Status",
+		"NetworkSettings",
 	}
 
 	// decoding into types.Container do not work since it eventually unmarshal
@@ -677,7 +678,7 @@ func UtilCreateNetworkMode(c *check.C, networkMode string) {
 
 	var containerJSON types.ContainerJSON
 	c.Assert(json.Unmarshal(body, &containerJSON), checker.IsNil)
-	c.Assert(containerJSON.HostConfig.NetworkMode, checker.Equals, runconfig.NetworkMode(networkMode), check.Commentf("Mismatched NetworkMode"))
+	c.Assert(containerJSON.HostConfig.NetworkMode, checker.Equals, containertypes.NetworkMode(networkMode), check.Commentf("Mismatched NetworkMode"))
 }
 
 func (s *DockerSuite) TestContainerApiCreateWithCpuSharesCpuset(c *check.C) {
@@ -1402,18 +1403,6 @@ func (s *DockerSuite) TestPostContainersCreateShmSizeNegative(c *check.C) {
 	c.Assert(string(body), checker.Contains, "SHM size must be greater then 0")
 }
 
-func (s *DockerSuite) TestPostContainersCreateShmSizeZero(c *check.C) {
-	config := map[string]interface{}{
-		"Image":      "busybox",
-		"HostConfig": map[string]interface{}{"ShmSize": 0},
-	}
-
-	status, body, err := sockRequest("POST", "/containers/create", config)
-	c.Assert(err, check.IsNil)
-	c.Assert(status, check.Equals, http.StatusInternalServerError)
-	c.Assert(string(body), checker.Contains, "SHM size must be greater then 0")
-}
-
 func (s *DockerSuite) TestPostContainersCreateShmSizeHostConfigOmitted(c *check.C) {
 	var defaultSHMSize int64 = 67108864
 	config := map[string]interface{}{
@@ -1435,7 +1424,7 @@ func (s *DockerSuite) TestPostContainersCreateShmSizeHostConfigOmitted(c *check.
 	var containerJSON types.ContainerJSON
 	c.Assert(json.Unmarshal(body, &containerJSON), check.IsNil)
 
-	c.Assert(*containerJSON.HostConfig.ShmSize, check.Equals, defaultSHMSize)
+	c.Assert(containerJSON.HostConfig.ShmSize, check.Equals, defaultSHMSize)
 
 	out, _ := dockerCmd(c, "start", "-i", containerJSON.ID)
 	shmRegexp := regexp.MustCompile(`shm on /dev/shm type tmpfs(.*)size=65536k`)
@@ -1465,7 +1454,7 @@ func (s *DockerSuite) TestPostContainersCreateShmSizeOmitted(c *check.C) {
 	var containerJSON types.ContainerJSON
 	c.Assert(json.Unmarshal(body, &containerJSON), check.IsNil)
 
-	c.Assert(*containerJSON.HostConfig.ShmSize, check.Equals, int64(67108864))
+	c.Assert(containerJSON.HostConfig.ShmSize, check.Equals, int64(67108864))
 
 	out, _ := dockerCmd(c, "start", "-i", containerJSON.ID)
 	shmRegexp := regexp.MustCompile(`shm on /dev/shm type tmpfs(.*)size=65536k`)
@@ -1495,7 +1484,7 @@ func (s *DockerSuite) TestPostContainersCreateWithShmSize(c *check.C) {
 	var containerJSON types.ContainerJSON
 	c.Assert(json.Unmarshal(body, &containerJSON), check.IsNil)
 
-	c.Assert(*containerJSON.HostConfig.ShmSize, check.Equals, int64(1073741824))
+	c.Assert(containerJSON.HostConfig.ShmSize, check.Equals, int64(1073741824))
 
 	out, _ := dockerCmd(c, "start", "-i", containerJSON.ID)
 	shmRegex := regexp.MustCompile(`shm on /dev/shm type tmpfs(.*)size=1048576k`)

@@ -7,21 +7,22 @@ import (
 	"path/filepath"
 	"testing"
 
+	containertypes "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/container"
 	"github.com/docker/docker/pkg/graphdb"
 	"github.com/docker/docker/pkg/truncindex"
-	"github.com/docker/docker/runconfig"
 	"github.com/docker/docker/volume"
 	volumedrivers "github.com/docker/docker/volume/drivers"
 	"github.com/docker/docker/volume/local"
 	"github.com/docker/docker/volume/store"
+	"github.com/docker/go-connections/nat"
 )
 
 //
 // https://github.com/docker/docker/issues/8069
 //
 
-func TestGet(t *testing.T) {
+func TestGetContainer(t *testing.T) {
 	c1 := &container.Container{
 		CommonContainer: container.CommonContainer{
 			ID:   "5a4ff6a163ad4533d22d69a2b8960bf7fafdcba06e72d2febdba229008b0bf57",
@@ -91,32 +92,32 @@ func TestGet(t *testing.T) {
 		containerGraphDB: graph,
 	}
 
-	if container, _ := daemon.Get("3cdbd1aa394fd68559fd1441d6eff2ab7c1e6363582c82febfaa8045df3bd8de"); container != c2 {
+	if container, _ := daemon.GetContainer("3cdbd1aa394fd68559fd1441d6eff2ab7c1e6363582c82febfaa8045df3bd8de"); container != c2 {
 		t.Fatal("Should explicitly match full container IDs")
 	}
 
-	if container, _ := daemon.Get("75fb0b8009"); container != c4 {
+	if container, _ := daemon.GetContainer("75fb0b8009"); container != c4 {
 		t.Fatal("Should match a partial ID")
 	}
 
-	if container, _ := daemon.Get("drunk_hawking"); container != c2 {
+	if container, _ := daemon.GetContainer("drunk_hawking"); container != c2 {
 		t.Fatal("Should match a full name")
 	}
 
 	// c3.Name is a partial match for both c3.ID and c2.ID
-	if c, _ := daemon.Get("3cdbd1aa"); c != c3 {
+	if c, _ := daemon.GetContainer("3cdbd1aa"); c != c3 {
 		t.Fatal("Should match a full name even though it collides with another container's ID")
 	}
 
-	if container, _ := daemon.Get("d22d69a2b896"); container != c5 {
+	if container, _ := daemon.GetContainer("d22d69a2b896"); container != c5 {
 		t.Fatal("Should match a container where the provided prefix is an exact match to the it's name, and is also a prefix for it's ID")
 	}
 
-	if _, err := daemon.Get("3cdbd1"); err == nil {
+	if _, err := daemon.GetContainer("3cdbd1"); err == nil {
 		t.Fatal("Should return an error when provided a prefix that partially matches multiple container ID's")
 	}
 
-	if _, err := daemon.Get("nothing"); err == nil {
+	if _, err := daemon.GetContainer("nothing"); err == nil {
 		t.Fatal("Should return an error when provided a prefix that is neither a name or a partial match to an ID")
 	}
 
@@ -141,7 +142,7 @@ func initDaemonWithVolumeStore(tmp string) (*Daemon, error) {
 
 func TestParseSecurityOpt(t *testing.T) {
 	container := &container.Container{}
-	config := &runconfig.HostConfig{}
+	config := &containertypes.HostConfig{}
 
 	// test apparmor
 	config.SecurityOpt = []string{"apparmor:test_profile"}
@@ -308,5 +309,86 @@ func TestContainerInitDNS(t *testing.T) {
 
 	if c.HostConfig.DNSOptions == nil {
 		t.Fatal("Expected container DNSOptions to not be nil")
+	}
+}
+
+func newPortNoError(proto, port string) nat.Port {
+	p, _ := nat.NewPort(proto, port)
+	return p
+}
+
+func TestMerge(t *testing.T) {
+	volumesImage := make(map[string]struct{})
+	volumesImage["/test1"] = struct{}{}
+	volumesImage["/test2"] = struct{}{}
+	portsImage := make(nat.PortSet)
+	portsImage[newPortNoError("tcp", "1111")] = struct{}{}
+	portsImage[newPortNoError("tcp", "2222")] = struct{}{}
+	configImage := &containertypes.Config{
+		ExposedPorts: portsImage,
+		Env:          []string{"VAR1=1", "VAR2=2"},
+		Volumes:      volumesImage,
+	}
+
+	portsUser := make(nat.PortSet)
+	portsUser[newPortNoError("tcp", "2222")] = struct{}{}
+	portsUser[newPortNoError("tcp", "3333")] = struct{}{}
+	volumesUser := make(map[string]struct{})
+	volumesUser["/test3"] = struct{}{}
+	configUser := &containertypes.Config{
+		ExposedPorts: portsUser,
+		Env:          []string{"VAR2=3", "VAR3=3"},
+		Volumes:      volumesUser,
+	}
+
+	if err := merge(configUser, configImage); err != nil {
+		t.Error(err)
+	}
+
+	if len(configUser.ExposedPorts) != 3 {
+		t.Fatalf("Expected 3 ExposedPorts, 1111, 2222 and 3333, found %d", len(configUser.ExposedPorts))
+	}
+	for portSpecs := range configUser.ExposedPorts {
+		if portSpecs.Port() != "1111" && portSpecs.Port() != "2222" && portSpecs.Port() != "3333" {
+			t.Fatalf("Expected 1111 or 2222 or 3333, found %s", portSpecs)
+		}
+	}
+	if len(configUser.Env) != 3 {
+		t.Fatalf("Expected 3 env var, VAR1=1, VAR2=3 and VAR3=3, found %d", len(configUser.Env))
+	}
+	for _, env := range configUser.Env {
+		if env != "VAR1=1" && env != "VAR2=3" && env != "VAR3=3" {
+			t.Fatalf("Expected VAR1=1 or VAR2=3 or VAR3=3, found %s", env)
+		}
+	}
+
+	if len(configUser.Volumes) != 3 {
+		t.Fatalf("Expected 3 volumes, /test1, /test2 and /test3, found %d", len(configUser.Volumes))
+	}
+	for v := range configUser.Volumes {
+		if v != "/test1" && v != "/test2" && v != "/test3" {
+			t.Fatalf("Expected /test1 or /test2 or /test3, found %s", v)
+		}
+	}
+
+	ports, _, err := nat.ParsePortSpecs([]string{"0000"})
+	if err != nil {
+		t.Error(err)
+	}
+	configImage2 := &containertypes.Config{
+		ExposedPorts: ports,
+	}
+
+	if err := merge(configUser, configImage2); err != nil {
+		t.Error(err)
+	}
+
+	if len(configUser.ExposedPorts) != 4 {
+		t.Fatalf("Expected 4 ExposedPorts, 0000, 1111, 2222 and 3333, found %d", len(configUser.ExposedPorts))
+	}
+	for portSpecs := range configUser.ExposedPorts {
+		if portSpecs.Port() != "0" && portSpecs.Port() != "1111" && portSpecs.Port() != "2222" && portSpecs.Port() != "3333" {
+			t.Fatalf("Expected %q or %q or %q or %q, found %s", 0, 1111, 2222, 3333, portSpecs)
+		}
 	}
 }

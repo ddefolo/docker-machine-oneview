@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	containertypes "github.com/docker/docker/api/types/container"
+	networktypes "github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/container"
 	"github.com/docker/docker/daemon/execdriver"
 	"github.com/docker/docker/daemon/links"
@@ -22,8 +24,8 @@ import (
 	"github.com/docker/docker/pkg/idtools"
 	"github.com/docker/docker/pkg/mount"
 	"github.com/docker/docker/pkg/stringid"
-	"github.com/docker/docker/pkg/ulimit"
 	"github.com/docker/docker/runconfig"
+	"github.com/docker/go-units"
 	"github.com/docker/libnetwork"
 	"github.com/docker/libnetwork/netlabel"
 	"github.com/docker/libnetwork/options"
@@ -144,11 +146,11 @@ func (daemon *Daemon) populateCommand(c *container.Container, env []string) erro
 
 	autoCreatedDevices := mergeDevices(configs.DefaultAutoCreatedDevices, userSpecifiedDevices)
 
-	var rlimits []*ulimit.Rlimit
+	var rlimits []*units.Rlimit
 	ulimits := c.HostConfig.Ulimits
 
 	// Merge ulimits with daemon defaults
-	ulIdx := make(map[string]*ulimit.Ulimit)
+	ulIdx := make(map[string]*units.Ulimit)
 	for _, ul := range ulimits {
 		ulIdx[ul.Name] = ul
 	}
@@ -173,6 +175,16 @@ func (daemon *Daemon) populateCommand(c *container.Container, env []string) erro
 		return err
 	}
 
+	readIOpsDevice, err := getBlkioReadIOpsDevices(c.HostConfig)
+	if err != nil {
+		return err
+	}
+
+	writeIOpsDevice, err := getBlkioWriteIOpsDevices(c.HostConfig)
+	if err != nil {
+		return err
+	}
+
 	for _, limit := range ulimits {
 		rl, err := limit.GetRlimit()
 		if err != nil {
@@ -188,18 +200,24 @@ func (daemon *Daemon) populateCommand(c *container.Container, env []string) erro
 			CPUShares:         c.HostConfig.CPUShares,
 			BlkioWeight:       c.HostConfig.BlkioWeight,
 		},
-		MemorySwap:                  c.HostConfig.MemorySwap,
-		KernelMemory:                c.HostConfig.KernelMemory,
-		CpusetCpus:                  c.HostConfig.CpusetCpus,
-		CpusetMems:                  c.HostConfig.CpusetMems,
-		CPUPeriod:                   c.HostConfig.CPUPeriod,
-		CPUQuota:                    c.HostConfig.CPUQuota,
-		Rlimits:                     rlimits,
-		BlkioWeightDevice:           weightDevices,
-		BlkioThrottleReadBpsDevice:  readBpsDevice,
-		BlkioThrottleWriteBpsDevice: writeBpsDevice,
-		OomKillDisable:              c.HostConfig.OomKillDisable,
-		MemorySwappiness:            *c.HostConfig.MemorySwappiness,
+		MemorySwap:                   c.HostConfig.MemorySwap,
+		KernelMemory:                 c.HostConfig.KernelMemory,
+		CpusetCpus:                   c.HostConfig.CpusetCpus,
+		CpusetMems:                   c.HostConfig.CpusetMems,
+		CPUPeriod:                    c.HostConfig.CPUPeriod,
+		CPUQuota:                     c.HostConfig.CPUQuota,
+		Rlimits:                      rlimits,
+		BlkioWeightDevice:            weightDevices,
+		BlkioThrottleReadBpsDevice:   readBpsDevice,
+		BlkioThrottleWriteBpsDevice:  writeBpsDevice,
+		BlkioThrottleReadIOpsDevice:  readIOpsDevice,
+		BlkioThrottleWriteIOpsDevice: writeIOpsDevice,
+		OomKillDisable:               c.HostConfig.OomKillDisable,
+		MemorySwappiness:             -1,
+	}
+
+	if c.HostConfig.MemorySwappiness != nil {
+		resources.MemorySwappiness = *c.HostConfig.MemorySwappiness
 	}
 
 	processConfig := execdriver.ProcessConfig{
@@ -240,7 +258,7 @@ func (daemon *Daemon) populateCommand(c *container.Container, env []string) erro
 		AutoCreatedDevices: autoCreatedDevices,
 		CapAdd:             c.HostConfig.CapAdd.Slice(),
 		CapDrop:            c.HostConfig.CapDrop.Slice(),
-		CgroupParent:       c.HostConfig.CgroupParent,
+		CgroupParent:       daemon.configStore.CgroupParent,
 		GIDMapping:         gidMap,
 		GroupAdd:           c.HostConfig.GroupAdd,
 		Ipc:                ipc,
@@ -251,6 +269,9 @@ func (daemon *Daemon) populateCommand(c *container.Container, env []string) erro
 		SeccompProfile:     c.SeccompProfile,
 		UIDMapping:         uidMap,
 		UTS:                uts,
+	}
+	if c.HostConfig.CgroupParent != "" {
+		c.Command.CgroupParent = c.HostConfig.CgroupParent
 	}
 
 	return nil
@@ -271,7 +292,8 @@ func (daemon *Daemon) getSize(container *container.Container) (int64, int64) {
 
 	sizeRw, err = container.RWLayer.Size()
 	if err != nil {
-		logrus.Errorf("Driver %s couldn't return diff size of container %s: %s", daemon.driver, container.ID, err)
+		logrus.Errorf("Driver %s couldn't return diff size of container %s: %s",
+			daemon.GraphDriverName(), container.ID, err)
 		// FIXME: GetSize should return an error. Not changing it now in case
 		// there is a side-effect.
 		sizeRw = -1
@@ -412,7 +434,7 @@ func (daemon *Daemon) buildSandboxOptions(container *container.Container, n libn
 			continue
 		}
 
-		c, err := daemon.Get(ref.ParentID)
+		c, err := daemon.GetContainer(ref.ParentID)
 		if err != nil {
 			logrus.Error(err)
 		}
@@ -440,10 +462,10 @@ func (daemon *Daemon) buildSandboxOptions(container *container.Container, n libn
 
 func (daemon *Daemon) updateNetworkSettings(container *container.Container, n libnetwork.Network) error {
 	if container.NetworkSettings == nil {
-		container.NetworkSettings = &network.Settings{Networks: make(map[string]*network.EndpointSettings)}
+		container.NetworkSettings = &network.Settings{Networks: make(map[string]*networktypes.EndpointSettings)}
 	}
 
-	if !container.HostConfig.NetworkMode.IsHost() && runconfig.NetworkMode(n.Type()).IsHost() {
+	if !container.HostConfig.NetworkMode.IsHost() && containertypes.NetworkMode(n.Type()).IsHost() {
 		return runconfig.ErrConflictHostNetwork
 	}
 
@@ -457,16 +479,16 @@ func (daemon *Daemon) updateNetworkSettings(container *container.Container, n li
 			// Avoid duplicate config
 			return nil
 		}
-		if !runconfig.NetworkMode(sn.Type()).IsPrivate() ||
-			!runconfig.NetworkMode(n.Type()).IsPrivate() {
+		if !containertypes.NetworkMode(sn.Type()).IsPrivate() ||
+			!containertypes.NetworkMode(n.Type()).IsPrivate() {
 			return runconfig.ErrConflictSharedNetwork
 		}
-		if runconfig.NetworkMode(sn.Name()).IsNone() ||
-			runconfig.NetworkMode(n.Name()).IsNone() {
+		if containertypes.NetworkMode(sn.Name()).IsNone() ||
+			containertypes.NetworkMode(n.Name()).IsNone() {
 			return runconfig.ErrConflictNoNetwork
 		}
 	}
-	container.NetworkSettings.Networks[n.Name()] = new(network.EndpointSettings)
+	container.NetworkSettings.Networks[n.Name()] = new(networktypes.EndpointSettings)
 
 	return nil
 }
@@ -476,7 +498,7 @@ func (daemon *Daemon) updateEndpointNetworkSettings(container *container.Contain
 		return err
 	}
 
-	if container.HostConfig.NetworkMode == runconfig.NetworkMode("bridge") {
+	if container.HostConfig.NetworkMode == containertypes.NetworkMode("bridge") {
 		container.NetworkSettings.Bridge = daemon.configStore.Bridge.Iface
 	}
 
@@ -524,6 +546,29 @@ func (daemon *Daemon) updateNetwork(container *container.Container) error {
 	return nil
 }
 
+// updateContainerNetworkSettings update the network settings
+func (daemon *Daemon) updateContainerNetworkSettings(container *container.Container) error {
+	mode := container.HostConfig.NetworkMode
+	if container.Config.NetworkDisabled || mode.IsContainer() {
+		return nil
+	}
+
+	networkName := mode.NetworkName()
+	if mode.IsDefault() {
+		networkName = daemon.netController.Config().Daemon.DefaultNetwork
+	}
+	if mode.IsUserDefined() {
+		n, err := daemon.FindNetwork(networkName)
+		if err != nil {
+			return err
+		}
+		networkName = n.Name()
+	}
+	container.NetworkSettings.Networks = make(map[string]*networktypes.EndpointSettings)
+	container.NetworkSettings.Networks[networkName] = new(networktypes.EndpointSettings)
+	return nil
+}
+
 func (daemon *Daemon) allocateNetwork(container *container.Container) error {
 	controller := daemon.netController
 
@@ -534,24 +579,14 @@ func (daemon *Daemon) allocateNetwork(container *container.Container) error {
 
 	updateSettings := false
 	if len(container.NetworkSettings.Networks) == 0 {
-		mode := container.HostConfig.NetworkMode
-		if container.Config.NetworkDisabled || mode.IsContainer() {
+		if container.Config.NetworkDisabled || container.HostConfig.NetworkMode.IsContainer() {
 			return nil
 		}
 
-		networkName := mode.NetworkName()
-		if mode.IsDefault() {
-			networkName = controller.Config().Daemon.DefaultNetwork
+		err := daemon.updateContainerNetworkSettings(container)
+		if err != nil {
+			return err
 		}
-		if mode.IsUserDefined() {
-			n, err := daemon.FindNetwork(networkName)
-			if err != nil {
-				return err
-			}
-			networkName = n.Name()
-		}
-		container.NetworkSettings.Networks = make(map[string]*network.EndpointSettings)
-		container.NetworkSettings.Networks[networkName] = new(network.EndpointSettings)
 		updateSettings = true
 	}
 
@@ -595,7 +630,7 @@ func (daemon *Daemon) connectToNetwork(container *container.Container, idOrName 
 		return runconfig.ErrConflictSharedNetwork
 	}
 
-	if runconfig.NetworkMode(idOrName).IsBridge() &&
+	if containertypes.NetworkMode(idOrName).IsBridge() &&
 		daemon.configStore.DisableBridge {
 		container.Config.NetworkDisabled = true
 		return nil
@@ -667,6 +702,7 @@ func (daemon *Daemon) connectToNetwork(container *container.Container, idOrName 
 		return derr.ErrorCodeJoinInfo.WithArgs(err)
 	}
 
+	daemon.LogNetworkEventWithAttributes(n, "connect", map[string]string{"container": container.ID})
 	return nil
 }
 
@@ -676,19 +712,26 @@ func (daemon *Daemon) DisconnectFromNetwork(container *container.Container, n li
 		return derr.ErrorCodeNotRunning.WithArgs(container.ID)
 	}
 
-	if container.HostConfig.NetworkMode.IsHost() && runconfig.NetworkMode(n.Type()).IsHost() {
+	if container.HostConfig.NetworkMode.IsHost() && containertypes.NetworkMode(n.Type()).IsHost() {
 		return runconfig.ErrConflictHostNetwork
 	}
 
-	return disconnectFromNetwork(container, n)
-}
-
-func disconnectFromNetwork(container *container.Container, n libnetwork.Network) error {
+	if err := disconnectFromNetwork(container, n); err != nil {
+		return err
+	}
 
 	if err := container.ToDiskLocking(); err != nil {
 		return fmt.Errorf("Error saving container to disk: %v", err)
 	}
 
+	attributes := map[string]string{
+		"container": container.ID,
+	}
+	daemon.LogNetworkEventWithAttributes(n, "disconnect", attributes)
+	return nil
+}
+
+func disconnectFromNetwork(container *container.Container, n libnetwork.Network) error {
 	var (
 		ep   libnetwork.Endpoint
 		sbox libnetwork.Sandbox
@@ -780,18 +823,18 @@ func (daemon *Daemon) setNetworkNamespaceKey(containerID string, pid int) error 
 
 func (daemon *Daemon) getIpcContainer(container *container.Container) (*container.Container, error) {
 	containerID := container.HostConfig.IpcMode.Container()
-	c, err := daemon.Get(containerID)
+	c, err := daemon.GetContainer(containerID)
 	if err != nil {
 		return nil, err
 	}
 	if !c.IsRunning() {
-		return nil, derr.ErrorCodeIPCRunning
+		return nil, derr.ErrorCodeIPCRunning.WithArgs(containerID)
 	}
 	return c, nil
 }
 
 func (daemon *Daemon) getNetworkedContainer(containerID, connectedContainerID string) (*container.Container, error) {
-	nc, err := daemon.Get(connectedContainerID)
+	nc, err := daemon.GetContainer(connectedContainerID)
 	if err != nil {
 		return nil, err
 	}
@@ -810,14 +853,18 @@ func (daemon *Daemon) releaseNetwork(container *container.Container) {
 	}
 
 	sid := container.NetworkSettings.SandboxID
-	networks := container.NetworkSettings.Networks
-	for n := range networks {
-		networks[n] = &network.EndpointSettings{}
+	settings := container.NetworkSettings.Networks
+	var networks []libnetwork.Network
+	for n := range settings {
+		if nw, err := daemon.FindNetwork(n); err == nil {
+			networks = append(networks, nw)
+		}
+		settings[n] = &networktypes.EndpointSettings{}
 	}
 
-	container.NetworkSettings = &network.Settings{Networks: networks}
+	container.NetworkSettings = &network.Settings{Networks: settings}
 
-	if sid == "" || len(networks) == 0 {
+	if sid == "" || len(settings) == 0 {
 		return
 	}
 
@@ -829,6 +876,13 @@ func (daemon *Daemon) releaseNetwork(container *container.Container) {
 
 	if err := sb.Delete(); err != nil {
 		logrus.Errorf("Error deleting sandbox id %s for container %s: %v", sid, container.ID, err)
+	}
+
+	attributes := map[string]string{
+		"container": container.ID,
+	}
+	for _, nw := range networks {
+		daemon.LogNetworkEventWithAttributes(nw, "disconnect", attributes)
 	}
 }
 
@@ -845,8 +899,8 @@ func (daemon *Daemon) setupIpcDirs(c *container.Container) error {
 		}
 
 		shmSize := container.DefaultSHMSize
-		if c.HostConfig.ShmSize != nil {
-			shmSize = *c.HostConfig.ShmSize
+		if c.HostConfig.ShmSize != 0 {
+			shmSize = c.HostConfig.ShmSize
 		}
 		shmproperty := "mode=1777,size=" + strconv.FormatInt(shmSize, 10)
 		if err := syscall.Mount("shm", shmPath, "tmpfs", uintptr(syscall.MS_NOEXEC|syscall.MS_NOSUID|syscall.MS_NODEV), label.FormatMountLabel(shmproperty, c.GetMountLabel())); err != nil {
@@ -869,9 +923,6 @@ func (daemon *Daemon) setupIpcDirs(c *container.Container) error {
 
 		if err := syscall.Mount("mqueue", mqueuePath, "mqueue", uintptr(syscall.MS_NOEXEC|syscall.MS_NOSUID|syscall.MS_NODEV), ""); err != nil {
 			return fmt.Errorf("mounting mqueue mqueue : %s", err)
-		}
-		if err := os.Chown(mqueuePath, rootUID, rootGID); err != nil {
-			return err
 		}
 	}
 
@@ -928,7 +979,7 @@ func killProcessDirectly(container *container.Container) error {
 	return nil
 }
 
-func getDevicesFromPath(deviceMapping runconfig.DeviceMapping) (devs []*configs.Device, err error) {
+func getDevicesFromPath(deviceMapping containertypes.DeviceMapping) (devs []*configs.Device, err error) {
 	device, err := devices.DeviceFromPath(deviceMapping.PathOnHost, deviceMapping.CgroupPermissions)
 	// if there was no error, return the device
 	if err == nil {

@@ -26,6 +26,7 @@ type Driver struct {
 	DiskSize      int
 	Project       string
 	Tags          string
+	UseExisting   bool
 }
 
 const (
@@ -110,6 +111,11 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Usage:  "Use internal GCE Instance IP rather than public one",
 			EnvVar: "GOOGLE_USE_INTERNAL_IP",
 		},
+		mcnflag.BoolFlag{
+			Name:   "google-use-existing",
+			Usage:  "Don't create a new VM, use an existing one",
+			EnvVar: "GOOGLE_USE_EXISTING",
+		},
 	}
 }
 
@@ -156,20 +162,21 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	}
 
 	d.Zone = flags.String("google-zone")
-	d.MachineType = flags.String("google-machine-type")
-	d.MachineImage = flags.String("google-machine-image")
-	d.DiskSize = flags.Int("google-disk-size")
-	d.DiskType = flags.String("google-disk-type")
-	d.Address = flags.String("google-address")
-	d.Preemptible = flags.Bool("google-preemptible")
-	d.UseInternalIP = flags.Bool("google-use-internal-ip")
-	d.Scopes = flags.String("google-scopes")
-	d.Tags = flags.String("google-tags")
-	d.SwarmMaster = flags.Bool("swarm-master")
-	d.SwarmHost = flags.String("swarm-host")
-	d.SwarmDiscovery = flags.String("swarm-discovery")
+	d.UseExisting = flags.Bool("google-use-existing")
+	if !d.UseExisting {
+		d.MachineType = flags.String("google-machine-type")
+		d.MachineImage = flags.String("google-machine-image")
+		d.DiskSize = flags.Int("google-disk-size")
+		d.DiskType = flags.String("google-disk-type")
+		d.Address = flags.String("google-address")
+		d.Preemptible = flags.Bool("google-preemptible")
+		d.UseInternalIP = flags.Bool("google-use-internal-ip")
+		d.Scopes = flags.String("google-scopes")
+		d.Tags = flags.String("google-tags")
+	}
 	d.SSHUser = flags.String("google-username")
 	d.SSHPort = 22
+	d.SetSwarmConfigFromFlags(flags)
 
 	return nil
 }
@@ -193,8 +200,15 @@ func (d *Driver) PreCreateCheck() error {
 	// doesn't exist, so just check instance for nil.
 	log.Infof("Check if the instance already exists")
 
-	if instance, _ := c.instance(); instance != nil {
-		return fmt.Errorf("Instance %v already exists.", d.MachineName)
+	instance, _ := c.instance()
+	if d.UseExisting {
+		if instance == nil {
+			return fmt.Errorf("Unable to find instance %q in zone %q.", d.MachineName, d.Zone)
+		}
+	} else {
+		if instance != nil {
+			return fmt.Errorf("Instance %q already exists in zone %q.", d.MachineName, d.Zone)
+		}
 	}
 
 	return nil
@@ -215,6 +229,13 @@ func (d *Driver) Create() error {
 		return err
 	}
 
+	if err := c.openFirewallPorts(); err != nil {
+		return err
+	}
+
+	if d.UseExisting {
+		return c.configureInstance(d)
+	}
 	return c.createInstance(d)
 }
 
@@ -318,6 +339,15 @@ func (d *Driver) Stop() error {
 	return nil
 }
 
+// Restart restarts a machine which is known to be running.
+func (d *Driver) Restart() error {
+	if err := d.Stop(); err != nil {
+		return err
+	}
+
+	return d.Start()
+}
+
 // Kill stops an existing GCE instance.
 func (d *Driver) Kill() error {
 	return d.Stop()
@@ -340,8 +370,4 @@ func (d *Driver) Remove() error {
 		}
 	}
 	return c.deleteDisk()
-}
-
-func (d *Driver) Restart() error {
-	return nil
 }

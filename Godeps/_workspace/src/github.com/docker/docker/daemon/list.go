@@ -8,11 +8,11 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/container"
 	"github.com/docker/docker/image"
 	"github.com/docker/docker/pkg/graphdb"
-	"github.com/docker/docker/pkg/nat"
-	"github.com/docker/docker/pkg/parsers/filters"
+	"github.com/docker/go-connections/nat"
 )
 
 // iterationAction represents possible outcomes happening during the container iteration.
@@ -162,7 +162,7 @@ func (daemon *Daemon) foldFilter(config *ContainersConfig) (*listContext, error)
 
 	var beforeContFilter, sinceContFilter *container.Container
 	err = psFilters.WalkValues("before", func(value string) error {
-		beforeContFilter, err = daemon.Get(value)
+		beforeContFilter, err = daemon.GetContainer(value)
 		return err
 	})
 	if err != nil {
@@ -170,7 +170,7 @@ func (daemon *Daemon) foldFilter(config *ContainersConfig) (*listContext, error)
 	}
 
 	err = psFilters.WalkValues("since", func(value string) error {
-		sinceContFilter, err = daemon.Get(value)
+		sinceContFilter, err = daemon.GetContainer(value)
 		return err
 	})
 	if err != nil {
@@ -204,14 +204,14 @@ func (daemon *Daemon) foldFilter(config *ContainersConfig) (*listContext, error)
 	}, 1)
 
 	if config.Before != "" && beforeContFilter == nil {
-		beforeContFilter, err = daemon.Get(config.Before)
+		beforeContFilter, err = daemon.GetContainer(config.Before)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	if config.Since != "" && sinceContFilter == nil {
-		sinceContFilter, err = daemon.Get(config.Since)
+		sinceContFilter, err = daemon.GetContainer(config.Since)
 		if err != nil {
 			return nil, err
 		}
@@ -266,7 +266,7 @@ func includeContainerInList(container *container.Container, ctx *listContext) it
 		return excludeContainer
 	}
 
-	// Stop interation when the container arrives to the filter container
+	// Stop iteration when the container arrives to the filter container
 	if ctx.sinceFilter != nil {
 		if container.ID == ctx.sinceFilter.ID {
 			return stopIteration
@@ -351,6 +351,7 @@ func (daemon *Daemon) transformContainer(container *container.Container, ctx *li
 	newC.Created = container.Created.Unix()
 	newC.Status = container.State.String()
 	newC.HostConfig.NetworkMode = string(container.HostConfig.NetworkMode)
+	newC.NetworkSettings = &types.SummaryNetworkSettings{container.NetworkSettings.Networks}
 
 	newC.Ports = []types.Port{}
 	for port, bindings := range container.NetworkSettings.Ports {
@@ -391,24 +392,27 @@ func (daemon *Daemon) transformContainer(container *container.Container, ctx *li
 
 // Volumes lists known volumes, using the filter to restrict the range
 // of volumes returned.
-func (daemon *Daemon) Volumes(filter string) ([]*types.Volume, error) {
+func (daemon *Daemon) Volumes(filter string) ([]*types.Volume, []string, error) {
 	var volumesOut []*types.Volume
 	volFilters, err := filters.FromParam(filter)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	filterUsed := volFilters.Include("dangling") &&
 		(volFilters.ExactMatch("dangling", "true") || volFilters.ExactMatch("dangling", "1"))
 
-	volumes := daemon.volumes.List()
+	volumes, warnings, err := daemon.volumes.List()
+	if err != nil {
+		return nil, nil, err
+	}
+	if filterUsed {
+		volumes = daemon.volumes.FilterByUsed(volumes)
+	}
 	for _, v := range volumes {
-		if filterUsed && daemon.volumes.Count(v) > 0 {
-			continue
-		}
 		volumesOut = append(volumesOut, volumeToAPIType(v))
 	}
-	return volumesOut, nil
+	return volumesOut, warnings, nil
 }
 
 func populateImageFilterByParents(ancestorMap map[image.ID]bool, imageID image.ID, getChildren func(image.ID) []image.ID) {

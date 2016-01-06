@@ -1,4 +1,4 @@
-% DOCKER(1) Docker User Manuals
+% DOCKER(8) Docker User Manuals
 % Shishir Mahajan
 % SEPTEMBER 2015
 # NAME
@@ -7,16 +7,18 @@ docker-daemon - Enable daemon mode
 # SYNOPSIS
 **docker daemon**
 [**--api-cors-header**=[=*API-CORS-HEADER*]]
+[**--authz-plugin**[=*[]*]]
 [**-b**|**--bridge**[=*BRIDGE*]]
 [**--bip**[=*BIP*]]
+[**--cgroup-parent**[=*/docker*]]
 [**--cluster-store**[=*[]*]]
 [**--cluster-advertise**[=*[]*]]
 [**--cluster-store-opt**[=*map[]*]]
-[**-D**|**--debug**[=*false*]]
+[**-D**|**--debug**]
 [**--default-gateway**[=*DEFAULT-GATEWAY*]]
 [**--default-gateway-v6**[=*DEFAULT-GATEWAY-V6*]]
 [**--default-ulimit**[=*[]*]]
-[**--disable-legacy-registry**[=*false*]]
+[**--disable-legacy-registry**]
 [**--dns**[=*[]*]]
 [**--dns-opt**[=*[]*]]
 [**--dns-search**[=*[]*]]
@@ -34,7 +36,7 @@ docker-daemon - Enable daemon mode
 [**--ip-forward**[=*true*]]
 [**--ip-masq**[=*true*]]
 [**--iptables**[=*true*]]
-[**--ipv6**[=*false*]]
+[**--ipv6**]
 [**-l**|**--log-level**[=*info*]]
 [**--label**[=*[]*]]
 [**--log-driver**[=*json-file*]]
@@ -43,13 +45,13 @@ docker-daemon - Enable daemon mode
 [**-p**|**--pidfile**[=*/var/run/docker.pid*]]
 [**--registry-mirror**[=*[]*]]
 [**-s**|**--storage-driver**[=*STORAGE-DRIVER*]]
-[**--selinux-enabled**[=*false*]]
+[**--selinux-enabled**]
 [**--storage-opt**[=*[]*]]
-[**--tls**[=*false*]]
+[**--tls**]
 [**--tlscacert**[=*~/.docker/ca.pem*]]
 [**--tlscert**[=*~/.docker/cert.pem*]]
 [**--tlskey**[=*~/.docker/key.pem*]]
-[**--tlsverify**[=*false*]]
+[**--tlsverify**]
 [**--userland-proxy**[=*true*]]
 
 # DESCRIPTION
@@ -70,11 +72,17 @@ format.
 **--api-cors-header**=""
   Set CORS headers in the remote API. Default is cors disabled. Give urls like "http://foo, http://bar, ...". Give "*" to allow all.
 
+**--authz-plugin**=""
+  Set authorization plugins to load
+
 **-b**, **--bridge**=""
   Attach containers to a pre\-existing network bridge; use 'none' to disable container networking
 
 **--bip**=""
   Use the provided CIDR notation address for the dynamically created bridge (docker0); Mutually exclusive of \-b
+
+**--cgroup-parent**=""
+  Set parent cgroup for all containers. Default is "/docker".
 
 **--cluster-store**=""
   URL of the distributed storage backend
@@ -455,6 +463,31 @@ Key/Value store.
 Specifies the path to a local file with a PEM encoded private key.  This
 private key is used as the client key for communication with the
 Key/Value store.
+
+# Access authorization
+
+Docker's access authorization can be extended by authorization plugins that your
+organization can purchase or build themselves. You can install one or more
+authorization plugins when you start the Docker `daemon` using the
+`--authz-plugin=PLUGIN_ID` option.
+
+```bash
+docker daemon --authz-plugin=plugin1 --authz-plugin=plugin2,...
+```
+
+The `PLUGIN_ID` value is either the plugin's name or a path to its specification
+file. The plugin's implementation determines whether you can specify a name or
+path. Consult with your Docker administrator to get information about the
+plugins available to you.
+
+Once a plugin is installed, requests made to the `daemon` through the command
+line or Docker's remote API are allowed or denied by the plugin.  If you have
+multiple plugins installed, at least one must allow the request for it to
+complete.
+
+For information about how to create an authorization plugin, see [authorization
+plugin](https://docs.docker.com/engine/extend/authorization.md) section in the
+Docker extend section of this documentation.
 
 
 # HISTORY

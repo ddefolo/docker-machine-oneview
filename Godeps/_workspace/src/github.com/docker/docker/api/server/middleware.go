@@ -13,6 +13,7 @@ import (
 	"github.com/docker/docker/api/server/httputils"
 	"github.com/docker/docker/dockerversion"
 	"github.com/docker/docker/errors"
+	"github.com/docker/docker/pkg/authorization"
 	"github.com/docker/docker/pkg/version"
 	"golang.org/x/net/context"
 )
@@ -37,13 +38,48 @@ func debugRequestMiddleware(handler httputils.APIFunc) httputils.APIFunc {
 						if _, exists := postForm["password"]; exists {
 							postForm["password"] = "*****"
 						}
-						logrus.Debugf("form data: %q", postForm)
+						formStr, errMarshal := json.Marshal(postForm)
+						if errMarshal == nil {
+							logrus.Debugf("form data: %s", string(formStr))
+						} else {
+							logrus.Debugf("form data: %q", postForm)
+						}
 					}
 				}
 			}
 		}
 
 		return handler(ctx, w, r, vars)
+	}
+}
+
+// authorizationMiddleware perform authorization on the request.
+func (s *Server) authorizationMiddleware(handler httputils.APIFunc) httputils.APIFunc {
+	return func(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
+		// FIXME: fill when authN gets in
+		// User and UserAuthNMethod are taken from AuthN plugins
+		// Currently tracked in https://github.com/docker/docker/pull/13994
+		user := ""
+		userAuthNMethod := ""
+		authCtx := authorization.NewCtx(s.authZPlugins, user, userAuthNMethod, r.Method, r.RequestURI)
+
+		if err := authCtx.AuthZRequest(w, r); err != nil {
+			logrus.Errorf("AuthZRequest for %s %s returned error: %s", r.Method, r.RequestURI, err)
+			return err
+		}
+
+		rw := authorization.NewResponseModifier(w)
+
+		if err := handler(ctx, rw, r, vars); err != nil {
+			logrus.Errorf("Handler for %s %s returned error: %s", r.Method, r.RequestURI, err)
+			return err
+		}
+
+		if err := authCtx.AuthZResponse(rw, r); err != nil {
+			logrus.Errorf("AuthZResponse for %s %s returned error: %s", r.Method, r.RequestURI, err)
+			return err
+		}
+		return nil
 	}
 }
 
@@ -91,14 +127,14 @@ func versionMiddleware(handler httputils.APIFunc) httputils.APIFunc {
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
 		apiVersion := version.Version(vars["version"])
 		if apiVersion == "" {
-			apiVersion = api.Version
+			apiVersion = api.DefaultVersion
 		}
 
-		if apiVersion.GreaterThan(api.Version) {
-			return errors.ErrorCodeNewerClientVersion.WithArgs(apiVersion, api.Version)
+		if apiVersion.GreaterThan(api.DefaultVersion) {
+			return errors.ErrorCodeNewerClientVersion.WithArgs(apiVersion, api.DefaultVersion)
 		}
 		if apiVersion.LessThan(api.MinVersion) {
-			return errors.ErrorCodeOldClientVersion.WithArgs(apiVersion, api.Version)
+			return errors.ErrorCodeOldClientVersion.WithArgs(apiVersion, api.DefaultVersion)
 		}
 
 		w.Header().Set("Server", "Docker/"+dockerversion.Version+" ("+runtime.GOOS+")")
@@ -109,7 +145,7 @@ func versionMiddleware(handler httputils.APIFunc) httputils.APIFunc {
 
 // handleWithGlobalMiddlwares wraps the handler function for a request with
 // the server's global middlewares. The order of the middlewares is backwards,
-// meaning that the first in the list will be evaludated last.
+// meaning that the first in the list will be evaluated last.
 //
 // Example: handleWithGlobalMiddlewares(s.getContainersName)
 //
@@ -131,6 +167,11 @@ func (s *Server) handleWithGlobalMiddlewares(handler httputils.APIFunc) httputil
 	// Only want this on debug level
 	if s.cfg.Logging && logrus.GetLevel() == logrus.DebugLevel {
 		middlewares = append(middlewares, debugRequestMiddleware)
+	}
+
+	if len(s.cfg.AuthZPluginNames) > 0 {
+		s.authZPlugins = authorization.NewPlugins(s.cfg.AuthZPluginNames)
+		middlewares = append(middlewares, s.authorizationMiddleware)
 	}
 
 	h := handler

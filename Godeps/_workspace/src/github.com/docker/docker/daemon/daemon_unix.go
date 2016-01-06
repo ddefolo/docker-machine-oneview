@@ -12,18 +12,18 @@ import (
 	"syscall"
 
 	"github.com/Sirupsen/logrus"
+	pblkiodev "github.com/docker/docker/api/types/blkiodev"
+	containertypes "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/container"
-	"github.com/docker/docker/daemon/graphdriver"
 	derr "github.com/docker/docker/errors"
 	"github.com/docker/docker/image"
 	"github.com/docker/docker/layer"
-	pblkiodev "github.com/docker/docker/pkg/blkiodev"
 	"github.com/docker/docker/pkg/idtools"
-	"github.com/docker/docker/pkg/parsers"
 	"github.com/docker/docker/pkg/parsers/kernel"
 	"github.com/docker/docker/pkg/sysinfo"
+	"github.com/docker/docker/reference"
 	"github.com/docker/docker/runconfig"
-	"github.com/docker/docker/tag"
+	runconfigopts "github.com/docker/docker/runconfig/opts"
 	"github.com/docker/libnetwork"
 	nwconfig "github.com/docker/libnetwork/config"
 	"github.com/docker/libnetwork/drivers/bridge"
@@ -40,24 +40,26 @@ const (
 	linuxMinCPUShares = 2
 	linuxMaxCPUShares = 262144
 	platformSupported = true
+	// It's not kernel limit, we want this 4M limit to supply a reasonable functional container
+	linuxMinMemory = 4194304
 )
 
-func getBlkioWeightDevices(config *runconfig.HostConfig) ([]*blkiodev.WeightDevice, error) {
+func getBlkioWeightDevices(config *containertypes.HostConfig) ([]*blkiodev.WeightDevice, error) {
 	var stat syscall.Stat_t
-	var BlkioWeightDevices []*blkiodev.WeightDevice
+	var blkioWeightDevices []*blkiodev.WeightDevice
 
 	for _, weightDevice := range config.BlkioWeightDevice {
 		if err := syscall.Stat(weightDevice.Path, &stat); err != nil {
 			return nil, err
 		}
-		WeightDevice := blkiodev.NewWeightDevice(int64(stat.Rdev/256), int64(stat.Rdev%256), weightDevice.Weight, 0)
-		BlkioWeightDevices = append(BlkioWeightDevices, WeightDevice)
+		weightDevice := blkiodev.NewWeightDevice(int64(stat.Rdev/256), int64(stat.Rdev%256), weightDevice.Weight, 0)
+		blkioWeightDevices = append(blkioWeightDevices, weightDevice)
 	}
 
-	return BlkioWeightDevices, nil
+	return blkioWeightDevices, nil
 }
 
-func parseSecurityOpt(container *container.Container, config *runconfig.HostConfig) error {
+func parseSecurityOpt(container *container.Container, config *containertypes.HostConfig) error {
 	var (
 		labelOpts []string
 		err       error
@@ -84,34 +86,64 @@ func parseSecurityOpt(container *container.Container, config *runconfig.HostConf
 	return err
 }
 
-func getBlkioReadBpsDevices(config *runconfig.HostConfig) ([]*blkiodev.ThrottleDevice, error) {
-	var BlkioReadBpsDevice []*blkiodev.ThrottleDevice
+func getBlkioReadIOpsDevices(config *containertypes.HostConfig) ([]*blkiodev.ThrottleDevice, error) {
+	var blkioReadIOpsDevice []*blkiodev.ThrottleDevice
+	var stat syscall.Stat_t
+
+	for _, iopsDevice := range config.BlkioDeviceReadIOps {
+		if err := syscall.Stat(iopsDevice.Path, &stat); err != nil {
+			return nil, err
+		}
+		readIOpsDevice := blkiodev.NewThrottleDevice(int64(stat.Rdev/256), int64(stat.Rdev%256), iopsDevice.Rate)
+		blkioReadIOpsDevice = append(blkioReadIOpsDevice, readIOpsDevice)
+	}
+
+	return blkioReadIOpsDevice, nil
+}
+
+func getBlkioWriteIOpsDevices(config *containertypes.HostConfig) ([]*blkiodev.ThrottleDevice, error) {
+	var blkioWriteIOpsDevice []*blkiodev.ThrottleDevice
+	var stat syscall.Stat_t
+
+	for _, iopsDevice := range config.BlkioDeviceWriteIOps {
+		if err := syscall.Stat(iopsDevice.Path, &stat); err != nil {
+			return nil, err
+		}
+		writeIOpsDevice := blkiodev.NewThrottleDevice(int64(stat.Rdev/256), int64(stat.Rdev%256), iopsDevice.Rate)
+		blkioWriteIOpsDevice = append(blkioWriteIOpsDevice, writeIOpsDevice)
+	}
+
+	return blkioWriteIOpsDevice, nil
+}
+
+func getBlkioReadBpsDevices(config *containertypes.HostConfig) ([]*blkiodev.ThrottleDevice, error) {
+	var blkioReadBpsDevice []*blkiodev.ThrottleDevice
 	var stat syscall.Stat_t
 
 	for _, bpsDevice := range config.BlkioDeviceReadBps {
 		if err := syscall.Stat(bpsDevice.Path, &stat); err != nil {
 			return nil, err
 		}
-		ReadBpsDevice := blkiodev.NewThrottleDevice(int64(stat.Rdev/256), int64(stat.Rdev%256), bpsDevice.Rate)
-		BlkioReadBpsDevice = append(BlkioReadBpsDevice, ReadBpsDevice)
+		readBpsDevice := blkiodev.NewThrottleDevice(int64(stat.Rdev/256), int64(stat.Rdev%256), bpsDevice.Rate)
+		blkioReadBpsDevice = append(blkioReadBpsDevice, readBpsDevice)
 	}
 
-	return BlkioReadBpsDevice, nil
+	return blkioReadBpsDevice, nil
 }
 
-func getBlkioWriteBpsDevices(config *runconfig.HostConfig) ([]*blkiodev.ThrottleDevice, error) {
-	var BlkioWriteBpsDevice []*blkiodev.ThrottleDevice
+func getBlkioWriteBpsDevices(config *containertypes.HostConfig) ([]*blkiodev.ThrottleDevice, error) {
+	var blkioWriteBpsDevice []*blkiodev.ThrottleDevice
 	var stat syscall.Stat_t
 
 	for _, bpsDevice := range config.BlkioDeviceWriteBps {
 		if err := syscall.Stat(bpsDevice.Path, &stat); err != nil {
 			return nil, err
 		}
-		WriteBpsDevice := blkiodev.NewThrottleDevice(int64(stat.Rdev/256), int64(stat.Rdev%256), bpsDevice.Rate)
-		BlkioWriteBpsDevice = append(BlkioWriteBpsDevice, WriteBpsDevice)
+		writeBpsDevice := blkiodev.NewThrottleDevice(int64(stat.Rdev/256), int64(stat.Rdev%256), bpsDevice.Rate)
+		blkioWriteBpsDevice = append(blkioWriteBpsDevice, writeBpsDevice)
 	}
 
-	return BlkioWriteBpsDevice, nil
+	return blkioWriteBpsDevice, nil
 }
 
 func checkKernelVersion(k, major, minor int) bool {
@@ -144,7 +176,7 @@ func checkKernel() error {
 
 // adaptContainerSettings is called during container creation to modify any
 // settings necessary in the HostConfig structure.
-func (daemon *Daemon) adaptContainerSettings(hostConfig *runconfig.HostConfig, adjustCPUShares bool) error {
+func (daemon *Daemon) adaptContainerSettings(hostConfig *containertypes.HostConfig, adjustCPUShares bool) error {
 	if adjustCPUShares && hostConfig.CPUShares > 0 {
 		// Handle unsupported CPUShares
 		if hostConfig.CPUShares < linuxMinCPUShares {
@@ -159,9 +191,8 @@ func (daemon *Daemon) adaptContainerSettings(hostConfig *runconfig.HostConfig, a
 		// By default, MemorySwap is set to twice the size of Memory.
 		hostConfig.MemorySwap = hostConfig.Memory * 2
 	}
-	if hostConfig.ShmSize == nil {
-		shmSize := container.DefaultSHMSize
-		hostConfig.ShmSize = &shmSize
+	if hostConfig.ShmSize == 0 {
+		hostConfig.ShmSize = container.DefaultSHMSize
 	}
 	var err error
 	if hostConfig.SecurityOpt == nil {
@@ -178,9 +209,147 @@ func (daemon *Daemon) adaptContainerSettings(hostConfig *runconfig.HostConfig, a
 	return nil
 }
 
+func verifyContainerResources(resources *containertypes.Resources) ([]string, error) {
+	warnings := []string{}
+	sysInfo := sysinfo.New(true)
+
+	// memory subsystem checks and adjustments
+	if resources.Memory != 0 && resources.Memory < linuxMinMemory {
+		return warnings, fmt.Errorf("Minimum memory limit allowed is 4MB")
+	}
+	if resources.Memory > 0 && !sysInfo.MemoryLimit {
+		warnings = append(warnings, "Your kernel does not support memory limit capabilities. Limitation discarded.")
+		logrus.Warnf("Your kernel does not support memory limit capabilities. Limitation discarded.")
+		resources.Memory = 0
+		resources.MemorySwap = -1
+	}
+	if resources.Memory > 0 && resources.MemorySwap != -1 && !sysInfo.SwapLimit {
+		warnings = append(warnings, "Your kernel does not support swap limit capabilities, memory limited without swap.")
+		logrus.Warnf("Your kernel does not support swap limit capabilities, memory limited without swap.")
+		resources.MemorySwap = -1
+	}
+	if resources.Memory > 0 && resources.MemorySwap > 0 && resources.MemorySwap < resources.Memory {
+		return warnings, fmt.Errorf("Minimum memoryswap limit should be larger than memory limit, see usage.")
+	}
+	if resources.Memory == 0 && resources.MemorySwap > 0 {
+		return warnings, fmt.Errorf("You should always set the Memory limit when using Memoryswap limit, see usage.")
+	}
+	if resources.MemorySwappiness != nil && *resources.MemorySwappiness != -1 && !sysInfo.MemorySwappiness {
+		warnings = append(warnings, "Your kernel does not support memory swappiness capabilities, memory swappiness discarded.")
+		logrus.Warnf("Your kernel does not support memory swappiness capabilities, memory swappiness discarded.")
+		resources.MemorySwappiness = nil
+	}
+	if resources.MemorySwappiness != nil {
+		swappiness := *resources.MemorySwappiness
+		if swappiness < -1 || swappiness > 100 {
+			return warnings, fmt.Errorf("Invalid value: %v, valid memory swappiness range is 0-100.", swappiness)
+		}
+	}
+	if resources.MemoryReservation > 0 && !sysInfo.MemoryReservation {
+		warnings = append(warnings, "Your kernel does not support memory soft limit capabilities. Limitation discarded.")
+		logrus.Warnf("Your kernel does not support memory soft limit capabilities. Limitation discarded.")
+		resources.MemoryReservation = 0
+	}
+	if resources.Memory > 0 && resources.MemoryReservation > 0 && resources.Memory < resources.MemoryReservation {
+		return warnings, fmt.Errorf("Minimum memory limit should be larger than memory reservation limit, see usage.")
+	}
+	if resources.KernelMemory > 0 && !sysInfo.KernelMemory {
+		warnings = append(warnings, "Your kernel does not support kernel memory limit capabilities. Limitation discarded.")
+		logrus.Warnf("Your kernel does not support kernel memory limit capabilities. Limitation discarded.")
+		resources.KernelMemory = 0
+	}
+	if resources.KernelMemory > 0 && resources.KernelMemory < linuxMinMemory {
+		return warnings, fmt.Errorf("Minimum kernel memory limit allowed is 4MB")
+	}
+	if resources.KernelMemory > 0 && !checkKernelVersion(4, 0, 0) {
+		warnings = append(warnings, "You specified a kernel memory limit on a kernel older than 4.0. Kernel memory limits are experimental on older kernels, it won't work as expected and can cause your system to be unstable.")
+		logrus.Warnf("You specified a kernel memory limit on a kernel older than 4.0. Kernel memory limits are experimental on older kernels, it won't work as expected and can cause your system to be unstable.")
+	}
+	if resources.OomKillDisable && !sysInfo.OomKillDisable {
+		resources.OomKillDisable = false
+		return warnings, fmt.Errorf("Your kernel does not support oom kill disable.")
+	}
+
+	// cpu subsystem checks and adjustments
+	if resources.CPUShares > 0 && !sysInfo.CPUShares {
+		warnings = append(warnings, "Your kernel does not support CPU shares. Shares discarded.")
+		logrus.Warnf("Your kernel does not support CPU shares. Shares discarded.")
+		resources.CPUShares = 0
+	}
+	if resources.CPUPeriod > 0 && !sysInfo.CPUCfsPeriod {
+		warnings = append(warnings, "Your kernel does not support CPU cfs period. Period discarded.")
+		logrus.Warnf("Your kernel does not support CPU cfs period. Period discarded.")
+		resources.CPUPeriod = 0
+	}
+	if resources.CPUQuota > 0 && !sysInfo.CPUCfsQuota {
+		warnings = append(warnings, "Your kernel does not support CPU cfs quota. Quota discarded.")
+		logrus.Warnf("Your kernel does not support CPU cfs quota. Quota discarded.")
+		resources.CPUQuota = 0
+	}
+
+	// cpuset subsystem checks and adjustments
+	if (resources.CpusetCpus != "" || resources.CpusetMems != "") && !sysInfo.Cpuset {
+		warnings = append(warnings, "Your kernel does not support cpuset. Cpuset discarded.")
+		logrus.Warnf("Your kernel does not support cpuset. Cpuset discarded.")
+		resources.CpusetCpus = ""
+		resources.CpusetMems = ""
+	}
+	cpusAvailable, err := sysInfo.IsCpusetCpusAvailable(resources.CpusetCpus)
+	if err != nil {
+		return warnings, derr.ErrorCodeInvalidCpusetCpus.WithArgs(resources.CpusetCpus)
+	}
+	if !cpusAvailable {
+		return warnings, derr.ErrorCodeNotAvailableCpusetCpus.WithArgs(resources.CpusetCpus, sysInfo.Cpus)
+	}
+	memsAvailable, err := sysInfo.IsCpusetMemsAvailable(resources.CpusetMems)
+	if err != nil {
+		return warnings, derr.ErrorCodeInvalidCpusetMems.WithArgs(resources.CpusetMems)
+	}
+	if !memsAvailable {
+		return warnings, derr.ErrorCodeNotAvailableCpusetMems.WithArgs(resources.CpusetMems, sysInfo.Mems)
+	}
+
+	// blkio subsystem checks and adjustments
+	if resources.BlkioWeight > 0 && !sysInfo.BlkioWeight {
+		warnings = append(warnings, "Your kernel does not support Block I/O weight. Weight discarded.")
+		logrus.Warnf("Your kernel does not support Block I/O weight. Weight discarded.")
+		resources.BlkioWeight = 0
+	}
+	if resources.BlkioWeight > 0 && (resources.BlkioWeight < 10 || resources.BlkioWeight > 1000) {
+		return warnings, fmt.Errorf("Range of blkio weight is from 10 to 1000.")
+	}
+	if len(resources.BlkioWeightDevice) > 0 && !sysInfo.BlkioWeightDevice {
+		warnings = append(warnings, "Your kernel does not support Block I/O weight_device.")
+		logrus.Warnf("Your kernel does not support Block I/O weight_device. Weight-device discarded.")
+		resources.BlkioWeightDevice = []*pblkiodev.WeightDevice{}
+	}
+	if len(resources.BlkioDeviceReadBps) > 0 && !sysInfo.BlkioReadBpsDevice {
+		warnings = append(warnings, "Your kernel does not support Block read limit in bytes per second.")
+		logrus.Warnf("Your kernel does not support Block I/O read limit in bytes per second. --device-read-bps discarded.")
+		resources.BlkioDeviceReadBps = []*pblkiodev.ThrottleDevice{}
+	}
+	if len(resources.BlkioDeviceWriteBps) > 0 && !sysInfo.BlkioWriteBpsDevice {
+		warnings = append(warnings, "Your kernel does not support Block write limit in bytes per second.")
+		logrus.Warnf("Your kernel does not support Block I/O write limit in bytes per second. --device-write-bps discarded.")
+		resources.BlkioDeviceWriteBps = []*pblkiodev.ThrottleDevice{}
+	}
+	if len(resources.BlkioDeviceReadIOps) > 0 && !sysInfo.BlkioReadIOpsDevice {
+		warnings = append(warnings, "Your kernel does not support Block read limit in IO per second.")
+		logrus.Warnf("Your kernel does not support Block I/O read limit in IO per second. -device-read-iops discarded.")
+		resources.BlkioDeviceReadIOps = []*pblkiodev.ThrottleDevice{}
+	}
+	if len(resources.BlkioDeviceWriteIOps) > 0 && !sysInfo.BlkioWriteIOpsDevice {
+		warnings = append(warnings, "Your kernel does not support Block write limit in IO per second.")
+		logrus.Warnf("Your kernel does not support Block I/O write limit in IO per second. --device-write-iops discarded.")
+		resources.BlkioDeviceWriteIOps = []*pblkiodev.ThrottleDevice{}
+	}
+
+	return warnings, nil
+}
+
 // verifyPlatformContainerSettings performs platform-specific validation of the
 // hostconfig and config structures.
-func verifyPlatformContainerSettings(daemon *Daemon, hostConfig *runconfig.HostConfig, config *runconfig.Config) ([]string, error) {
+func verifyPlatformContainerSettings(daemon *Daemon, hostConfig *containertypes.HostConfig, config *containertypes.Config) ([]string, error) {
 	warnings := []string{}
 	sysInfo := sysinfo.New(true)
 
@@ -189,120 +358,14 @@ func verifyPlatformContainerSettings(daemon *Daemon, hostConfig *runconfig.HostC
 		return warnings, err
 	}
 
-	if hostConfig.ShmSize != nil && *hostConfig.ShmSize <= 0 {
-		return warnings, fmt.Errorf("SHM size must be greater then 0")
+	w, err := verifyContainerResources(&hostConfig.Resources)
+	if err != nil {
+		return warnings, err
 	}
+	warnings = append(warnings, w...)
 
-	// memory subsystem checks and adjustments
-	if hostConfig.Memory != 0 && hostConfig.Memory < 4194304 {
-		return warnings, fmt.Errorf("Minimum memory limit allowed is 4MB")
-	}
-	if hostConfig.Memory > 0 && !sysInfo.MemoryLimit {
-		warnings = append(warnings, "Your kernel does not support memory limit capabilities. Limitation discarded.")
-		logrus.Warnf("Your kernel does not support memory limit capabilities. Limitation discarded.")
-		hostConfig.Memory = 0
-		hostConfig.MemorySwap = -1
-	}
-	if hostConfig.Memory > 0 && hostConfig.MemorySwap != -1 && !sysInfo.SwapLimit {
-		warnings = append(warnings, "Your kernel does not support swap limit capabilities, memory limited without swap.")
-		logrus.Warnf("Your kernel does not support swap limit capabilities, memory limited without swap.")
-		hostConfig.MemorySwap = -1
-	}
-	if hostConfig.Memory > 0 && hostConfig.MemorySwap > 0 && hostConfig.MemorySwap < hostConfig.Memory {
-		return warnings, fmt.Errorf("Minimum memoryswap limit should be larger than memory limit, see usage.")
-	}
-	if hostConfig.Memory == 0 && hostConfig.MemorySwap > 0 {
-		return warnings, fmt.Errorf("You should always set the Memory limit when using Memoryswap limit, see usage.")
-	}
-	if hostConfig.MemorySwappiness != nil && *hostConfig.MemorySwappiness != -1 && !sysInfo.MemorySwappiness {
-		warnings = append(warnings, "Your kernel does not support memory swappiness capabilities, memory swappiness discarded.")
-		logrus.Warnf("Your kernel does not support memory swappiness capabilities, memory swappiness discarded.")
-		hostConfig.MemorySwappiness = nil
-	}
-	if hostConfig.MemorySwappiness != nil {
-		swappiness := *hostConfig.MemorySwappiness
-		if swappiness < -1 || swappiness > 100 {
-			return warnings, fmt.Errorf("Invalid value: %v, valid memory swappiness range is 0-100.", swappiness)
-		}
-	}
-	if hostConfig.MemoryReservation > 0 && !sysInfo.MemoryReservation {
-		warnings = append(warnings, "Your kernel does not support memory soft limit capabilities. Limitation discarded.")
-		logrus.Warnf("Your kernel does not support memory soft limit capabilities. Limitation discarded.")
-		hostConfig.MemoryReservation = 0
-	}
-	if hostConfig.Memory > 0 && hostConfig.MemoryReservation > 0 && hostConfig.Memory < hostConfig.MemoryReservation {
-		return warnings, fmt.Errorf("Minimum memory limit should be larger than memory reservation limit, see usage.")
-	}
-	if hostConfig.KernelMemory > 0 && !sysInfo.KernelMemory {
-		warnings = append(warnings, "Your kernel does not support kernel memory limit capabilities. Limitation discarded.")
-		logrus.Warnf("Your kernel does not support kernel memory limit capabilities. Limitation discarded.")
-		hostConfig.KernelMemory = 0
-	}
-	if hostConfig.KernelMemory > 0 && !checkKernelVersion(4, 0, 0) {
-		warnings = append(warnings, "You specified a kernel memory limit on a kernel older than 4.0. Kernel memory limits are experimental on older kernels, it won't work as expected and can cause your system to be unstable.")
-		logrus.Warnf("You specified a kernel memory limit on a kernel older than 4.0. Kernel memory limits are experimental on older kernels, it won't work as expected and can cause your system to be unstable.")
-	}
-	if hostConfig.CPUShares > 0 && !sysInfo.CPUShares {
-		warnings = append(warnings, "Your kernel does not support CPU shares. Shares discarded.")
-		logrus.Warnf("Your kernel does not support CPU shares. Shares discarded.")
-		hostConfig.CPUShares = 0
-	}
-	if hostConfig.CPUPeriod > 0 && !sysInfo.CPUCfsPeriod {
-		warnings = append(warnings, "Your kernel does not support CPU cfs period. Period discarded.")
-		logrus.Warnf("Your kernel does not support CPU cfs period. Period discarded.")
-		hostConfig.CPUPeriod = 0
-	}
-	if hostConfig.CPUQuota > 0 && !sysInfo.CPUCfsQuota {
-		warnings = append(warnings, "Your kernel does not support CPU cfs quota. Quota discarded.")
-		logrus.Warnf("Your kernel does not support CPU cfs quota. Quota discarded.")
-		hostConfig.CPUQuota = 0
-	}
-	if (hostConfig.CpusetCpus != "" || hostConfig.CpusetMems != "") && !sysInfo.Cpuset {
-		warnings = append(warnings, "Your kernel does not support cpuset. Cpuset discarded.")
-		logrus.Warnf("Your kernel does not support cpuset. Cpuset discarded.")
-		hostConfig.CpusetCpus = ""
-		hostConfig.CpusetMems = ""
-	}
-	cpusAvailable, err := sysInfo.IsCpusetCpusAvailable(hostConfig.CpusetCpus)
-	if err != nil {
-		return warnings, derr.ErrorCodeInvalidCpusetCpus.WithArgs(hostConfig.CpusetCpus)
-	}
-	if !cpusAvailable {
-		return warnings, derr.ErrorCodeNotAvailableCpusetCpus.WithArgs(hostConfig.CpusetCpus, sysInfo.Cpus)
-	}
-	memsAvailable, err := sysInfo.IsCpusetMemsAvailable(hostConfig.CpusetMems)
-	if err != nil {
-		return warnings, derr.ErrorCodeInvalidCpusetMems.WithArgs(hostConfig.CpusetMems)
-	}
-	if !memsAvailable {
-		return warnings, derr.ErrorCodeNotAvailableCpusetMems.WithArgs(hostConfig.CpusetMems, sysInfo.Mems)
-	}
-	if hostConfig.BlkioWeight > 0 && !sysInfo.BlkioWeight {
-		warnings = append(warnings, "Your kernel does not support Block I/O weight. Weight discarded.")
-		logrus.Warnf("Your kernel does not support Block I/O weight. Weight discarded.")
-		hostConfig.BlkioWeight = 0
-	}
-	if hostConfig.BlkioWeight > 0 && (hostConfig.BlkioWeight < 10 || hostConfig.BlkioWeight > 1000) {
-		return warnings, fmt.Errorf("Range of blkio weight is from 10 to 1000.")
-	}
-	if len(hostConfig.BlkioWeightDevice) > 0 && !sysInfo.BlkioWeightDevice {
-		warnings = append(warnings, "Your kernel does not support Block I/O weight_device.")
-		logrus.Warnf("Your kernel does not support Block I/O weight_device. Weight-device discarded.")
-		hostConfig.BlkioWeightDevice = []*pblkiodev.WeightDevice{}
-	}
-	if len(hostConfig.BlkioDeviceReadBps) > 0 && !sysInfo.BlkioReadBpsDevice {
-		warnings = append(warnings, "Your kernel does not support Block read limit in bytes per second.")
-		logrus.Warnf("Your kernel does not support Block I/O read limit in bytes per second. --device-read-bps discarded.")
-		hostConfig.BlkioDeviceReadBps = []*pblkiodev.ThrottleDevice{}
-	}
-	if len(hostConfig.BlkioDeviceWriteBps) > 0 && !sysInfo.BlkioWriteBpsDevice {
-		warnings = append(warnings, "Your kernel does not support Block write limit in bytes per second.")
-		logrus.Warnf("Your kernel does not support Block I/O write limit in bytes per second. --device-write-bps discarded.")
-		hostConfig.BlkioDeviceWriteBps = []*pblkiodev.ThrottleDevice{}
-	}
-	if hostConfig.OomKillDisable && !sysInfo.OomKillDisable {
-		hostConfig.OomKillDisable = false
-		return warnings, fmt.Errorf("Your kernel does not support oom kill disable.")
+	if hostConfig.ShmSize < 0 {
+		return warnings, fmt.Errorf("SHM size must be greater then 0")
 	}
 
 	if hostConfig.OomScoreAdj < -1000 || hostConfig.OomScoreAdj > 1000 {
@@ -354,11 +417,6 @@ func configureKernelSecuritySupport(config *Config, driverName string) error {
 		selinuxSetDisabled()
 	}
 	return nil
-}
-
-// MigrateIfDownlevel is a wrapper for AUFS migration for downlevel
-func migrateIfDownlevel(driver graphdriver.Driver, root string) error {
-	return migrateIfAufs(driver, root)
 }
 
 func isBridgeNetworkDisabled(config *Config) bool {
@@ -526,14 +584,14 @@ func initBridgeDriver(controller libnetwork.NetworkController, config *Config) e
 		deferIPv6Alloc = ones <= 80
 
 		if ipamV6Conf == nil {
-			ipamV6Conf = &libnetwork.IpamConf{}
+			ipamV6Conf = &libnetwork.IpamConf{AuxAddresses: make(map[string]string)}
 		}
 		ipamV6Conf.PreferredPool = fCIDRv6.String()
 	}
 
 	if config.Bridge.DefaultGatewayIPv6 != nil {
 		if ipamV6Conf == nil {
-			ipamV6Conf = &libnetwork.IpamConf{}
+			ipamV6Conf = &libnetwork.IpamConf{AuxAddresses: make(map[string]string)}
 		}
 		ipamV6Conf.AuxAddresses["DefaultGatewayIPv6"] = config.Bridge.DefaultGatewayIPv6.String()
 	}
@@ -617,24 +675,24 @@ func setupInitLayer(initLayer string, rootUID, rootGID int) error {
 }
 
 // registerLinks writes the links to a file.
-func (daemon *Daemon) registerLinks(container *container.Container, hostConfig *runconfig.HostConfig) error {
+func (daemon *Daemon) registerLinks(container *container.Container, hostConfig *containertypes.HostConfig) error {
 	if hostConfig == nil || hostConfig.Links == nil {
 		return nil
 	}
 
 	for _, l := range hostConfig.Links {
-		name, alias, err := parsers.ParseLink(l)
+		name, alias, err := runconfigopts.ParseLink(l)
 		if err != nil {
 			return err
 		}
-		child, err := daemon.Get(name)
+		child, err := daemon.GetContainer(name)
 		if err != nil {
-			//An error from daemon.Get() means this name could not be found
+			//An error from daemon.GetContainer() means this name could not be found
 			return fmt.Errorf("Could not get container for %s", name)
 		}
 		for child.HostConfig.NetworkMode.IsContainer() {
 			parts := strings.SplitN(string(child.HostConfig.NetworkMode), ":", 2)
-			child, err = daemon.Get(parts[1])
+			child, err = daemon.GetContainer(parts[1])
 			if err != nil {
 				return fmt.Errorf("Could not get container for %s", parts[1])
 			}
@@ -669,7 +727,7 @@ func (daemon *Daemon) conditionalUnmountOnCleanup(container *container.Container
 	daemon.Unmount(container)
 }
 
-func restoreCustomImage(driver graphdriver.Driver, is image.Store, ls layer.Store, ts tag.Store) error {
+func restoreCustomImage(is image.Store, ls layer.Store, rs reference.Store) error {
 	// Unix has no custom images to register
 	return nil
 }

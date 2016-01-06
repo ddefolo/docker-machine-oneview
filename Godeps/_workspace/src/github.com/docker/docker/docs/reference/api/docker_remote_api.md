@@ -96,12 +96,20 @@ This section lists each version from latest to oldest.  Each listing includes a 
 [Docker Remote API v1.22](docker_remote_api_v1.22.md) documentation
 
 * `GET /containers/json` supports filter `isolation` on Windows.
+* `GET /containers/json` now returns the list of networks of containers.
 * `GET /info` Now returns `Architecture` and `OSType` fields, providing information
   about the host architecture and operating system type that the daemon runs on.
 * `GET /networks/(name)` now returns a `Name` field for each container attached to the network.
-* `GET /version` now returns the `BuildTime` field in RFC3339Nano format to make it 
+* `GET /version` now returns the `BuildTime` field in RFC3339Nano format to make it
   consistent with other date/time values returned by the API.
 * `AuthConfig` now supports a `registrytoken` for token based authentication
+* `POST /containers/create` now has a 4M minimum value limit for `HostConfig.KernelMemory`
+* Pushes initiated with `POST /images/(name)/push` and pulls initiated with `POST /images/create`
+  will be cancelled if the HTTP connection making the API request is closed before
+  the push or pull completes.
+* `POST /containers/create` now allows you to set a read/write rate limit for a 
+  device (in bytes per second or IO per second).
+* `GET /networks` now supports filtering by `name`, `id` and `type`.
 
 ### v1.21 API changes
 

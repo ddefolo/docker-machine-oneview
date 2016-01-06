@@ -17,7 +17,7 @@ import (
 // fails. If the remove succeeds, the container name is released, and
 // network links are removed.
 func (daemon *Daemon) ContainerRm(name string, config *types.ContainerRmConfig) error {
-	container, err := daemon.Get(name)
+	container, err := daemon.GetContainer(name)
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func (daemon *Daemon) rmLink(name string) error {
 		return err
 	}
 
-	parentContainer, _ := daemon.Get(pe.ID())
+	parentContainer, _ := daemon.GetContainer(pe.ID())
 	if parentContainer != nil {
 		if err := daemon.updateNetwork(parentContainer); err != nil {
 			logrus.Debugf("Could not update network to remove link %s: %v", n, err)
@@ -130,10 +130,10 @@ func (daemon *Daemon) cleanupContainer(container *container.Container, forceRemo
 		return derr.ErrorCodeRmFS.WithArgs(container.ID, err)
 	}
 
-	metadata, err := daemon.layerStore.DeleteMount(container.ID)
+	metadata, err := daemon.layerStore.ReleaseRWLayer(container.RWLayer)
 	layer.LogReleaseMetadata(metadata)
 	if err != nil && err != layer.ErrMountDoesNotExist {
-		return derr.ErrorCodeRmDriverFS.WithArgs(daemon.driver, container.ID, err)
+		return derr.ErrorCodeRmDriverFS.WithArgs(daemon.GraphDriverName(), container.ID, err)
 	}
 
 	if err = daemon.execDriver.Clean(container.ID); err != nil {
@@ -151,11 +151,13 @@ func (daemon *Daemon) VolumeRm(name string) error {
 	if err != nil {
 		return err
 	}
+
 	if err := daemon.volumes.Remove(v); err != nil {
 		if volumestore.IsInUse(err) {
 			return derr.ErrorCodeRmVolumeInUse.WithArgs(err)
 		}
 		return derr.ErrorCodeRmVolume.WithArgs(name, err)
 	}
+	daemon.LogVolumeEvent(v.Name(), "destroy", map[string]string{"driver": v.DriverName()})
 	return nil
 }

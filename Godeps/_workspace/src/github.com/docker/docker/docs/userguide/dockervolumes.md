@@ -29,7 +29,8 @@ containers that bypasses the [*Union File System*](../reference/glossary.md#unio
 
 - Volumes are initialized when a container is created. If the container's
   base image contains data at the specified mount point, that existing data is
-  copied into the new volume upon volume initialization.
+  copied into the new volume upon volume initialization. (Note that this does
+  not apply when [mounting a host directory](#mount-a-host-directory-as-a-data-volume).)
 - Data volumes can be shared and reused among containers.
 - Changes to a data volume are made directly.
 - Changes to a data volume will not be included when you update an image.
@@ -57,7 +58,7 @@ This will create a new volume inside a container at `/webapp`.
 
 ### Locating a volume
 
-You can locate the volume on the host by utilizing the 'docker inspect' command.
+You can locate the volume on the host by utilizing the `docker inspect` command.
 
     $ docker inspect web
 
@@ -77,8 +78,8 @@ volumes. The output should look something similar to the following:
     ]
     ...
 
-You will notice in the above 'Source' is specifying the location on the host and
-'Destination' is specifying the volume location inside the container. `RW` shows
+You will notice in the above `Source` is specifying the location on the host and
+`Destination` is specifying the volume location inside the container. `RW` shows
 if the volume is read/write.
 
 ### Mount a host directory as a data volume
@@ -101,7 +102,7 @@ The `host-dir` can either be an absolute path or a `name` value. If you
 supply an absolute path for the `host-dir`, Docker bind-mounts to the path
 you specify. If you supply a `name`, Docker creates a named volume by that `name`.
 
-A `name` value must start with start with an alphanumeric character,
+A `name` value must start with an alphanumeric character,
 followed by `a-z0-9`, `_` (underscore), `.` (period) or `-` (hyphen).
 An absolute path starts with a `/` (forward slash).
 
@@ -262,7 +263,7 @@ elsewhere. Create a new container.
 
 Then un-tar the backup file in the new container's data volume.
 
-    $ docker run --rm --volumes-from dbstore2 -v $(pwd):/backup ubuntu bash -c "cd /dbdata && tar xvf /backup/backup.tar"
+    $ docker run --rm --volumes-from dbstore2 -v $(pwd):/backup ubuntu bash -c "cd /dbdata && tar xvf /backup/backup.tar --strip 1"
 
 You can use the techniques above to automate backup, migration and
 restore testing using your preferred tools.

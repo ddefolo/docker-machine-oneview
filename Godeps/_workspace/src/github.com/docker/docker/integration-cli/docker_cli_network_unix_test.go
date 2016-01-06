@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/docker/docker/api/types"
@@ -170,7 +171,7 @@ func (s *DockerNetworkSuite) SetUpSuite(c *check.C) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/vnd.docker.plugins.v1+json")
-		// make sure libnetwork is now asking to release the expected address fro mthe expected poolid
+		// make sure libnetwork is now asking to release the expected address from the expected poolid
 		if addressRequest.PoolID != poolID {
 			fmt.Fprintf(w, `{"Error":"unknown pool id"}`)
 		} else if addressReleaseReq.Address != gw {
@@ -242,6 +243,25 @@ func isNwPresent(c *check.C, name string) bool {
 	return false
 }
 
+// assertNwList checks network list retrived with ls command
+// equals to expected network list
+// note: out should be `network ls [option]` result
+func assertNwList(c *check.C, out string, expectNws []string) {
+	lines := strings.Split(out, "\n")
+	var nwList []string
+	for _, line := range lines[1 : len(lines)-1] {
+		netFields := strings.Fields(line)
+		// wrap all network name in nwList
+		nwList = append(nwList, netFields[1])
+	}
+	// first need to sort out and expected
+	sort.StringSlice(nwList).Sort()
+	sort.StringSlice(expectNws).Sort()
+
+	// network ls should contains all expected networks
+	c.Assert(nwList, checker.DeepEquals, expectNws)
+}
+
 func getNwResource(c *check.C, name string) *types.NetworkResource {
 	out, _ := dockerCmd(c, "network", "inspect", name)
 	nr := []types.NetworkResource{}
@@ -255,6 +275,32 @@ func (s *DockerNetworkSuite) TestDockerNetworkLsDefault(c *check.C) {
 	for _, nn := range defaults {
 		assertNwIsAvailable(c, nn)
 	}
+}
+
+func (s *DockerNetworkSuite) TestDockerNetworkLsFilter(c *check.C) {
+	out, _ := dockerCmd(c, "network", "create", "dev")
+	defer func() {
+		dockerCmd(c, "network", "rm", "dev")
+	}()
+	containerID := strings.TrimSpace(out)
+
+	// filter with partial ID and partial name
+	// only show 'bridge' and 'dev' network
+	out, _ = dockerCmd(c, "network", "ls", "-f", "id="+containerID[0:5], "-f", "name=dge")
+	assertNwList(c, out, []string{"dev", "bridge"})
+
+	// only show built-in network (bridge, none, host)
+	out, _ = dockerCmd(c, "network", "ls", "-f", "type=builtin")
+	assertNwList(c, out, []string{"bridge", "none", "host"})
+
+	// only show custom networks (dev)
+	out, _ = dockerCmd(c, "network", "ls", "-f", "type=custom")
+	assertNwList(c, out, []string{"dev"})
+
+	// show all networks with filter
+	// it should be equivalent of ls without option
+	out, _ = dockerCmd(c, "network", "ls", "-f", "type=custom", "-f", "type=builtin")
+	assertNwList(c, out, []string{"dev", "bridge", "host", "none"})
 }
 
 func (s *DockerNetworkSuite) TestDockerNetworkCreateDelete(c *check.C) {
@@ -317,7 +363,7 @@ func (s *DockerSuite) TestDockerInspectMultipleNetwork(c *check.C) {
 	c.Assert(exitCode, checker.Equals, 1)
 	c.Assert(out, checker.Contains, "Error: No such network: nonexistent")
 	networkResources = []types.NetworkResource{}
-	inspectOut := strings.SplitN(out, "\n", 2)[1]
+	inspectOut := strings.SplitN(out, "\nError: No such network: nonexistent\n", 2)[0]
 	err = json.Unmarshal([]byte(inspectOut), &networkResources)
 	c.Assert(networkResources, checker.HasLen, 1)
 
@@ -429,7 +475,7 @@ func (s *DockerNetworkSuite) TestDockerNetworkIpamMultipleNetworks(c *check.C) {
 	assertNwIsAvailable(c, "test5")
 
 	// test network with multiple subnets
-	// bridge network doesnt support multiple subnets. hence, use a dummy driver that supports
+	// bridge network doesn't support multiple subnets. hence, use a dummy driver that supports
 
 	dockerCmd(c, "network", "create", "-d", dummyNetworkDriver, "--subnet=192.168.0.0/16", "--subnet=192.170.0.0/16", "test6")
 	assertNwIsAvailable(c, "test6")
@@ -491,7 +537,7 @@ func (s *DockerNetworkSuite) TestDockerNetworkIpamInvalidCombinations(c *check.C
 	_, _, err = dockerCmdWithError("network", "create", "--subnet=192.168.0.0/16", "--gateway=192.168.0.1", "--gateway=192.168.0.2", "test")
 	c.Assert(err, check.NotNil)
 
-	// Multiple overlaping subnets in the same network must fail
+	// Multiple overlapping subnets in the same network must fail
 	_, _, err = dockerCmdWithError("network", "create", "--subnet=192.168.0.0/16", "--subnet=192.168.1.0/16", "test")
 	c.Assert(err, check.NotNil)
 
@@ -569,6 +615,9 @@ func (s *DockerDaemonSuite) TestDockerNetworkNoDiscoveryDefaultBridgeNetwork(c *
 	out, err = s.d.Cmd("network", "connect", network, cid1)
 	c.Assert(err, check.IsNil, check.Commentf(out))
 
+	hosts, err = s.d.Cmd("exec", cid1, "cat", hostsFile)
+	c.Assert(err, checker.IsNil)
+
 	hostsPost, err = s.d.Cmd("exec", cid1, "cat", hostsFile)
 	c.Assert(err, checker.IsNil)
 	c.Assert(string(hosts), checker.Equals, string(hostsPost),
@@ -630,6 +679,9 @@ func (s *DockerNetworkSuite) TestDockerNetworkAnonymousEndpoint(c *check.C) {
 	assertNwIsAvailable(c, cstmBridgeNw1)
 
 	dockerCmd(c, "network", "connect", cstmBridgeNw1, cid2)
+
+	hosts2, err = readContainerFileWithExec(cid2, hostsFile)
+	c.Assert(err, checker.IsNil)
 
 	hosts1post, err = readContainerFileWithExec(cid1, hostsFile)
 	c.Assert(err, checker.IsNil)
@@ -890,4 +942,23 @@ func (s *DockerNetworkSuite) TestDockerNetworkConnectWithMac(c *check.C) {
 	mac2, err := inspectField("test", "NetworkSettings.Networks.mynetwork.MacAddress")
 	c.Assert(err, checker.IsNil)
 	c.Assert(strings.TrimSpace(mac2), checker.Not(checker.Equals), strings.TrimSpace(mac1))
+}
+
+func (s *DockerNetworkSuite) TestDockerNetworkInspectCreatedContainer(c *check.C) {
+	dockerCmd(c, "create", "--name", "test", "busybox")
+	networks, err := inspectField("test", "NetworkSettings.Networks")
+	c.Assert(err, checker.IsNil)
+	c.Assert(networks, checker.Contains, "bridge", check.Commentf("Should return 'bridge' network"))
+}
+
+func (s *DockerNetworkSuite) TestDockerNetworkRestartWithMulipleNetworks(c *check.C) {
+	dockerCmd(c, "network", "create", "test")
+	dockerCmd(c, "run", "--name=foo", "-d", "busybox", "top")
+	c.Assert(waitRun("foo"), checker.IsNil)
+	dockerCmd(c, "network", "connect", "test", "foo")
+	dockerCmd(c, "restart", "foo")
+	networks, err := inspectField("foo", "NetworkSettings.Networks")
+	c.Assert(err, checker.IsNil)
+	c.Assert(networks, checker.Contains, "bridge", check.Commentf("Should contain 'bridge' network"))
+	c.Assert(networks, checker.Contains, "test", check.Commentf("Should contain 'test' netwokr"))
 }

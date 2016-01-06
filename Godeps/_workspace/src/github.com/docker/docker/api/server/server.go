@@ -10,14 +10,16 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/api/server/httputils"
 	"github.com/docker/docker/api/server/router"
+	"github.com/docker/docker/api/server/router/build"
 	"github.com/docker/docker/api/server/router/container"
 	"github.com/docker/docker/api/server/router/local"
 	"github.com/docker/docker/api/server/router/network"
 	"github.com/docker/docker/api/server/router/system"
 	"github.com/docker/docker/api/server/router/volume"
 	"github.com/docker/docker/daemon"
-	"github.com/docker/docker/pkg/sockets"
+	"github.com/docker/docker/pkg/authorization"
 	"github.com/docker/docker/utils"
+	"github.com/docker/go-connections/sockets"
 	"github.com/gorilla/mux"
 	"golang.org/x/net/context"
 )
@@ -28,20 +30,22 @@ const versionMatcher = "/v{version:[0-9.]+}"
 
 // Config provides the configuration for the API server
 type Config struct {
-	Logging     bool
-	EnableCors  bool
-	CorsHeaders string
-	Version     string
-	SocketGroup string
-	TLSConfig   *tls.Config
-	Addrs       []Addr
+	Logging          bool
+	EnableCors       bool
+	CorsHeaders      string
+	AuthZPluginNames []string
+	Version          string
+	SocketGroup      string
+	TLSConfig        *tls.Config
+	Addrs            []Addr
 }
 
 // Server contains instance details for the server
 type Server struct {
-	cfg     *Config
-	servers []*HTTPServer
-	routers []router.Router
+	cfg          *Config
+	servers      []*HTTPServer
+	routers      []router.Router
+	authZPlugins []authorization.Plugin
 }
 
 // Addr contains string representation of address and its protocol (tcp, unix...).
@@ -174,6 +178,7 @@ func (s *Server) InitRouters(d *daemon.Daemon) {
 	s.addRouter(network.NewRouter(d))
 	s.addRouter(system.NewRouter(d))
 	s.addRouter(volume.NewRouter(d))
+	s.addRouter(build.NewRouter(d))
 }
 
 // addRouter adds a new router to the server.
