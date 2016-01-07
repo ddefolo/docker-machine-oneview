@@ -155,7 +155,7 @@ CONTRIBUTORS=$(git log "${LAST_RELEASE_VERSION}".. --format="%aN" --reverse | so
 CHANGELOG=$(git log "${LAST_RELEASE_VERSION}".. --oneline)
 
 CHECKSUM=""
-for file in $(ls bin/docker-machine*); do
+for file in $(find bin -type f); do
   SHA256=$(openssl dgst -sha256 < "${file}")
   MD5=$(openssl dgst -md5 < "${file}")
   LINE=$(printf "\n * **%s**\n  * sha256 \`%s\`\n  * md5 \`%s\`\n\n" "$(basename ${file})" "${SHA256}" "${MD5}")
@@ -231,7 +231,7 @@ github-release release \
 checkError "Could not create release, aborting"
 
 display "Uploading binaries"
-for file in $(ls bin/docker-machine*); do
+for file in $(find bin -type f); do
   display "Uploading ${file}..."
   github-release upload \
       --security-token  "${GITHUB_TOKEN}" \
