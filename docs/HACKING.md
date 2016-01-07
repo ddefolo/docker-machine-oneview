@@ -152,3 +152,9 @@ projects such as docker-machine-oneview and docker/machine project.
   ```
   Use `git status` to review additions, removals, and changes.
   Use `git commit -s -m "library update version X.X"` to commit your changes.
+
+Creating a new Release
+----------------------
+
+New releases should be done by maintainers for the project. Steps on performing
+these steps can be found in the [release](RELEASE.md) instructions.
