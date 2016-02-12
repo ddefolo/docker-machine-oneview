@@ -17,4 +17,4 @@ gen-dockerfile: proxy-config get-upstream-dockerfile
 		sed "/FROM.*/ r $(PROXY_DOCKER_ENV_FILE)" $(DOCKER_FILE) > $(DOCKER_FILE).t && mv $(DOCKER_FILE).t $(DOCKER_FILE)
 		# setup workdir and add current folder as /go/src/github.com/$GH_USER/$GH_REPO
 		sed "s#WORKDIR.*#WORKDIR /go/src/github.com/$(GH_USER)/$(GH_REPO)#g" $(DOCKER_FILE) > $(DOCKER_FILE).t && mv $(DOCKER_FILE).t $(DOCKER_FILE)
-		sed "s#ADD.*#ADD . /go/src/github.com/$(GH_USER)/$(GH_REPO)#g" $(DOCKER_FILE) > $(DOCKER_FILE).t && mv $(DOCKER_FILE).t $(DOCKER_FILE)
+		sed "s#COPY.*#COPY . /go/src/github.com/$(GH_USER)/$(GH_REPO)#g" $(DOCKER_FILE) > $(DOCKER_FILE).t && mv $(DOCKER_FILE).t $(DOCKER_FILE)
