@@ -5,10 +5,10 @@ import (
 	"io"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/docker/docker/api/types"
 	Cli "github.com/docker/docker/cli"
 	flag "github.com/docker/docker/pkg/mflag"
 	"github.com/docker/docker/pkg/promise"
+	"github.com/docker/engine-api/types"
 )
 
 // CmdExec runs a command in a running container.
@@ -87,6 +87,12 @@ func (cli *DockerCli) CmdExec(args ...string) error {
 		return err
 	}
 	defer resp.Close()
+	if in != nil && execConfig.Tty {
+		if err := cli.setRawTerminal(); err != nil {
+			return err
+		}
+		defer cli.restoreTerminal(in)
+	}
 	errCh = promise.Go(func() error {
 		return cli.holdHijackedConnection(execConfig.Tty, in, out, stderr, resp)
 	})

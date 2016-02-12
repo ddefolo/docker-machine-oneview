@@ -4,7 +4,7 @@ title = "Remote API v1.22"
 description = "API Documentation for Docker"
 keywords = ["API, Docker, rcli, REST,  documentation"]
 [menu.main]
-parent="smn_remoteapi"
+parent="engine_remoteapi"
 weight=-3
 +++
 <![end-metadata]-->
@@ -15,7 +15,7 @@ weight=-3
 
  - The Remote API has replaced `rcli`.
  - The daemon listens on `unix:///var/run/docker.sock` but you can
-   [Bind Docker to another host/port or a Unix socket](../../userguide/basics.md#bind-docker-to-another-host-port-or-a-unix-socket).
+   [Bind Docker to another host/port or a Unix socket](../../quickstart.md#bind-docker-to-another-host-port-or-a-unix-socket).
  - The API tends to be REST. However, for some complex commands, like `attach`
    or `pull`, the HTTP connection is hijacked to transport `stdout`,
    `stdin` and `stderr`.
@@ -61,6 +61,7 @@ List containers
                  "NetworkSettings": {
                          "Networks": {
                                  "bridge": {
+                                          "NetworkID": "7ea29fc1412292a2d7bba362f9253545fecdfa8ce9a6e37dd10ba8bee7129812",
                                           "EndpointID": "2cdc4edb1ded3631c81f57966563e5c8525b81121bb3706a9a9a3ae102711f3f",
                                           "Gateway": "172.17.0.1",
                                           "IPAddress": "172.17.0.2",
@@ -88,6 +89,7 @@ List containers
                  "NetworkSettings": {
                          "Networks": {
                                  "bridge": {
+                                          "NetworkID": "7ea29fc1412292a2d7bba362f9253545fecdfa8ce9a6e37dd10ba8bee7129812",
                                           "EndpointID": "88eaed7b37b38c2a3f0c4bc796494fdf51b270c2d22656412a2ca5d559a64d7a",
                                           "Gateway": "172.17.0.1",
                                           "IPAddress": "172.17.0.8",
@@ -116,6 +118,7 @@ List containers
                  "NetworkSettings": {
                          "Networks": {
                                  "bridge": {
+                                          "NetworkID": "7ea29fc1412292a2d7bba362f9253545fecdfa8ce9a6e37dd10ba8bee7129812",
                                           "EndpointID": "8b27c041c30326d59cd6e6f510d4f8d1d570a228466f956edf7815508f78e30d",
                                           "Gateway": "172.17.0.1",
                                           "IPAddress": "172.17.0.6",
@@ -144,6 +147,7 @@ List containers
                  "NetworkSettings": {
                          "Networks": {
                                  "bridge": {
+                                          "NetworkID": "7ea29fc1412292a2d7bba362f9253545fecdfa8ce9a6e37dd10ba8bee7129812",
                                           "EndpointID": "d91c7b2f0644403d7ef3095985ea0e2370325cd2332ff3a3225c4247328e66e9",
                                           "Gateway": "172.17.0.1",
                                           "IPAddress": "172.17.0.5",
@@ -220,10 +224,13 @@ Create a container
            },
            "Mounts": [
              {
+               "Name": "fac362...80535",
                "Source": "/data",
                "Destination": "/data",
+               "Driver": "local",
                "Mode": "ro,Z",
-               "RW": false
+               "RW": false,
+               "Propagation": ""
              }
            ],
            "WorkingDir": "",
@@ -265,6 +272,7 @@ Create a container
              "VolumesFrom": ["parent", "other:ro"],
              "CapAdd": ["NET_ADMIN"],
              "CapDrop": ["MKNOD"],
+             "GroupAdd": ["newgroup"],
              "RestartPolicy": { "Name": "", "MaximumRetryCount": 0 },
              "NetworkMode": "bridge",
              "Devices": [],
@@ -295,7 +303,7 @@ Json Parameters:
       for the container.
 -   **User** - A string value specifying the user inside the container.
 -   **Memory** - Memory limit in bytes.
--   **MemorySwap** - Total memory limit (memory + swap); set `-1` to disable swap
+-   **MemorySwap** - Total memory limit (memory + swap); set `-1` to enable unlimited swap.
       You must use this with `memory` and make the swap value larger than `memory`.
 -   **MemoryReservation** - Memory soft limit in bytes.
 -   **KernelMemory** - Kernel memory limit in bytes.
@@ -367,6 +375,7 @@ Json Parameters:
           Specified in the form `<container name>[:<ro|rw>]`
     -   **CapAdd** - A list of kernel capabilities to add to the container.
     -   **Capdrop** - A list of kernel capabilities to drop from the container.
+    -   **GroupAdd** - A list of additional groups that the container process will run as
     -   **RestartPolicy** – The behavior to apply when the container exits.  The
             value is an object with a `Name` property of either `"always"` to
             always restart, `"unless-stopped"` to restart always except when
@@ -377,7 +386,8 @@ Json Parameters:
             An ever increasing delay (double the previous delay, starting at 100mS)
             is added before each restart to prevent flooding the server.
     -   **NetworkMode** - Sets the networking mode for the container. Supported
-          values are: `bridge`, `host`, and `container:<name|id>`
+          standard values are: `bridge`, `host`, `none`, and `container:<name|id>`. Any other value is taken
+          as a custom network's name to which this container should connect to.
     -   **Devices** - A list of devices to add to the container specified as a JSON object in the
       form
           `{ "PathOnHost": "/dev/deviceName", "PathInContainer": "/dev/deviceName", "CgroupPermissions": "mrw"}`
@@ -540,14 +550,15 @@ Return low-level information on the container `id`
 			"MacAddress": "",
 			"Networks": {
 				"bridge": {
-					"EndpointID": "",
-					"Gateway": "",
-					"IPAddress": "",
-					"IPPrefixLen": 0,
+					"NetworkID": "7ea29fc1412292a2d7bba362f9253545fecdfa8ce9a6e37dd10ba8bee7129812",
+					"EndpointID": "7587b82f0dada3656fda26588aee72630c6fab1536d36e394b2bfbcf898c971d",
+					"Gateway": "172.17.0.1",
+					"IPAddress": "172.17.0.2",
+					"IPPrefixLen": 16,
 					"IPv6Gateway": "",
 					"GlobalIPv6Address": "",
 					"GlobalIPv6PrefixLen": 0,
-					"MacAddress": ""
+					"MacAddress": "02:42:ac:12:00:02"
 				}
 			}
 		},
@@ -570,10 +581,13 @@ Return low-level information on the container `id`
 		},
 		"Mounts": [
 			{
+				"Name": "fac362...80535",
 				"Source": "/data",
 				"Destination": "/data",
+				"Driver": "local",
 				"Mode": "ro,Z",
-				"RW": false
+				"RW": false,
+				"Propagation": ""
 			}
 		]
 	}
@@ -862,9 +876,10 @@ This endpoint returns a live stream of a container's resource usage statistics.
                "total_usage" : 36488948,
                "usage_in_kernelmode" : 20000000
             },
-            "system_cpu_usage" : 20091722000000000,
+            "system_cpu_usage" : 20091722000000000,
             "throttling_data" : {}
-         }      }
+         }
+      }
 
 Query Parameters:
 
@@ -923,7 +938,7 @@ Start the container `id`
 
 Query Parameters:
 
--   **detacheys** – Override the key sequence for detaching a
+-   **detachKeys** – Override the key sequence for detaching a
         container. Format is a single character `[a-Z]` or `ctrl-<value>`
         where `<value>` is one of: `a-z`, `@`, `^`, `[`, `,` or `_`.
 
@@ -1020,20 +1035,16 @@ Update resource configs of one or more containers.
        Content-Type: application/json
 
        {
-           "HostConfig": {
-               "Resources": {
-                   "BlkioWeight": 300,
-                   "CpuShares": 512,
-                   "CpuPeriod": 100000,
-                   "CpuQuota": 50000,
-                   "CpusetCpus": "0,1",
-                   "CpusetMems": "0",
-                   "Memory": 314572800,
-                   "MemorySwap": 514288000,
-                   "MemoryReservation": 209715200,
-                   "KernelMemory": 52428800,
-               }
-           }
+         "BlkioWeight": 300,
+         "CpuShares": 512,
+         "CpuPeriod": 100000,
+         "CpuQuota": 50000,
+         "CpusetCpus": "0,1",
+         "CpusetMems": "0",
+         "Memory": 314572800,
+         "MemorySwap": 514288000,
+         "MemoryReservation": 209715200,
+         "KernelMemory": 52428800,
        }
 
 **Example response**:
@@ -1138,7 +1149,7 @@ Attach to the container `id`
 
 Query Parameters:
 
--   **detacheys** – Override the key sequence for detaching a
+-   **detachKeys** – Override the key sequence for detaching a
         container. Format is a single character `[a-Z]` or `ctrl-<value>`
         where `<value>` is one of: `a-z`, `@`, `^`, `[`, `,` or `_`.
 -   **logs** – 1/True/true or 0/False/false, return logs. Default `false`.
@@ -1221,7 +1232,7 @@ Implements websocket protocol handshake according to [RFC 6455](http://tools.iet
 
 Query Parameters:
 
--   **detacheys** – Override the key sequence for detaching a
+-   **detachKeys** – Override the key sequence for detaching a
         container. Format is a single character `[a-Z]` or `ctrl-<value>`
         where `<value>` is one of: `a-z`, `@`, `^`, `[`, `,` or `_`.
 -   **logs** – 1/True/true or 0/False/false, return logs. Default `false`.
@@ -1581,7 +1592,7 @@ Query Parameters:
 -   **rm** - Remove intermediate containers after a successful build (default behavior).
 -   **forcerm** - Always remove intermediate containers (includes `rm`).
 -   **memory** - Set memory limit for build.
--   **memswap** - Total memory (memory + swap), `-1` to disable swap.
+-   **memswap** - Total memory (memory + swap), `-1` to enable unlimited swap.
 -   **cpushares** - CPU shares (relative weight).
 -   **cpusetcpus** - CPUs in which to allow execution (e.g., `0-3`, `0,1`).
 -   **cpuperiod** - The length of a CPU period in microseconds.
@@ -2078,6 +2089,9 @@ Display system-wide information
     {
         "Architecture": "x86_64",
         "Containers": 11,
+        "ContainersRunning": 7,
+        "ContainersStopped": 3,
+        "ContainersPaused": 1,
         "CpuCfsPeriod": true,
         "CpuCfsQuota": true,
         "Debug": false,
@@ -2085,6 +2099,7 @@ Display system-wide information
         "DockerRootDir": "/var/lib/docker",
         "Driver": "btrfs",
         "DriverStatus": [[""]],
+        "SystemStatus": [["State", "Healthy"]],
         "Plugins": {
             "Volume": [
                 "local"
@@ -2304,7 +2319,7 @@ Docker networks report the following events:
     [
 	    {
 		"action": "pull",
-		"type": "image", 
+		"type": "image",
 		"actor": {
 			"id": "busybox:latest",
 			"attributes": {}
@@ -2501,7 +2516,7 @@ Json Parameters:
 -   **AttachStdin** - Boolean value, attaches to `stdin` of the `exec` command.
 -   **AttachStdout** - Boolean value, attaches to `stdout` of the `exec` command.
 -   **AttachStderr** - Boolean value, attaches to `stderr` of the `exec` command.
--   **Detacheys** – Override the key sequence for detaching a
+-   **DetachKeys** – Override the key sequence for detaching a
         container. Format is a single character `[a-Z]` or `ctrl-<value>`
         where `<value>` is one of: `a-z`, `@`, `^`, `[`, `,` or `_`.
 -   **Tty** - Boolean value to allocate a pseudo-TTY.
@@ -2675,14 +2690,15 @@ Return low-level information about the `exec` command `id`.
             "MacAddress": "",
             "Networks": {
                 "bridge": {
-                    "EndpointID": "",
-                    "Gateway": "",
-                    "IPAddress": "",
-                    "IPPrefixLen": 0,
+                    "NetworkID": "7ea29fc1412292a2d7bba362f9253545fecdfa8ce9a6e37dd10ba8bee7129812",
+                    "EndpointID": "7587b82f0dada3656fda26588aee72630c6fab1536d36e394b2bfbcf898c971d",
+                    "Gateway": "172.17.0.1",
+                    "IPAddress": "172.17.0.2",
+                    "IPPrefixLen": 16,
                     "IPv6Gateway": "",
                     "GlobalIPv6Address": "",
                     "GlobalIPv6PrefixLen": 0,
-                    "MacAddress": ""
+                    "MacAddress": "02:42:ac:12:00:02"
                 }
             }
         },
@@ -2903,7 +2919,7 @@ Content-Type: application/json
 
 Query Parameters:
 
-- **filters** - JSON encoded network list filter. The filter value is one of: 
+- **filters** - JSON encoded network list filter. The filter value is one of:
   -   `name=<network-name>` Matches all or part of a network name.
   -   `id=<network-id>` Matches all or part of a network id.
   -   `type=["custom"|"builtin"]` Filters networks by type. The `custom` keyword returns all user-defined networks.
@@ -2919,7 +2935,7 @@ Status Codes:
 
 **Example request**:
 
-    GET /networks/f2de39df4171b0dc801e8002d1d999b77256983dfc63041c0f34030aa3977566 HTTP/1.1
+    GET /networks/7d86d31b1478e7cca9ebed7e73aa0fdeec46c5ca29497431d3007d2d9e15ed99 HTTP/1.1
 
 **Example response**:
 
@@ -2928,24 +2944,28 @@ HTTP/1.1 200 OK
 Content-Type: application/json
 
 {
-  "Name": "bridge",
-  "Id": "f2de39df4171b0dc801e8002d1d999b77256983dfc63041c0f34030aa3977566",
+  "Name": "net01",
+  "Id": "7d86d31b1478e7cca9ebed7e73aa0fdeec46c5ca29497431d3007d2d9e15ed99",
   "Scope": "local",
   "Driver": "bridge",
   "IPAM": {
     "Driver": "default",
     "Config": [
       {
-        "Subnet": "172.17.0.0/16"
+        "Subnet": "172.19.0.0/16",
+        "Gateway": "172.19.0.1/16"
       }
-    ]
+    ],
+    "Options": {
+        "foo": "bar"
+    }
   },
   "Containers": {
-    "39b69226f9d79f5634485fb236a23b2fe4e96a0a94128390a7fbbcc167065867": {
-      "Name": "mad_mclean",
-      "EndpointID": "ed2419a97c1d9954d05b46e462e7002ea552f216e9b136b80a7db8d98b442eda",
-      "MacAddress": "02:42:ac:11:00:02",
-      "IPv4Address": "172.17.0.2/16",
+    "19a4d5d687db25203351ed79d478946f861258f018fe384f229f2efa4b23513c": {
+      "Name": "test",
+      "EndpointID": "628cadb8bcb92de107b2a1e516cbffe463e321f548feb37697cce00ad694f21a",
+      "MacAddress": "02:42:ac:13:00:02",
+      "IPv4Address": "172.19.0.2/16",
       "IPv6Address": ""
     }
   },
@@ -2974,23 +2994,23 @@ Create a network
 **Example request**:
 
 ```
-Create a network
-
-**Example request**:
-
-```
 POST /networks/create HTTP/1.1
 Content-Type: application/json
 
 {
   "Name":"isolated_nw",
-  "Driver":"bridge"
+  "Driver":"bridge",
   "IPAM":{
     "Config":[{
       "Subnet":"172.20.0.0/16",
       "IPRange":"172.20.10.0/24",
       "Gateway":"172.20.10.11"
-    }]
+    }],
+    "Options": {
+        "foo": "bar"
+    }
+  },
+  "Internal":true
 }
 ```
 
@@ -3033,7 +3053,13 @@ POST /networks/22be93d5babb089c5aab8dbc369042fad48ff791584ca2da2100db837a1c7c30/
 Content-Type: application/json
 
 {
-  "Container":"3613f73ba0e4"
+  "Container":"3613f73ba0e4",
+  "EndpointConfig": {
+    "test_nw": {
+        "IPv4Address":"172.24.56.89",
+        "IPv6Address":"2001:db8::5689"
+    }
+  }
 }
 ```
 
@@ -3064,7 +3090,8 @@ POST /networks/22be93d5babb089c5aab8dbc369042fad48ff791584ca2da2100db837a1c7c30/
 Content-Type: application/json
 
 {
-  "Container":"3613f73ba0e4"
+  "Container":"3613f73ba0e4",
+  "Force":false
 }
 ```
 
@@ -3081,6 +3108,7 @@ Status Codes:
 JSON Parameters:
 
 - **Container** - container-id/name to be disconnected from a network
+- **Force** - Force the container to disconnect from a network
 
 ### Remove a network
 

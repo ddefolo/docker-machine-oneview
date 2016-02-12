@@ -7,11 +7,11 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/docker/docker/api/types"
 	Cli "github.com/docker/docker/cli"
 	flag "github.com/docker/docker/pkg/mflag"
 	"github.com/docker/docker/pkg/promise"
 	"github.com/docker/docker/pkg/signal"
+	"github.com/docker/engine-api/types"
 )
 
 func (cli *DockerCli) forwardAllSignals(cid string) chan os.Signal {
@@ -96,6 +96,12 @@ func (cli *DockerCli) CmdStart(args ...string) error {
 			return err
 		}
 		defer resp.Close()
+		if in != nil && c.Config.Tty {
+			if err := cli.setRawTerminal(); err != nil {
+				return err
+			}
+			defer cli.restoreTerminal(in)
+		}
 
 		cErr := promise.Go(func() error {
 			return cli.holdHijackedConnection(c.Config.Tty, in, cli.out, cli.err, resp)

@@ -2,25 +2,22 @@ package distribution
 
 import (
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/api"
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/distribution/metadata"
 	"github.com/docker/docker/distribution/xfer"
 	"github.com/docker/docker/image"
 	"github.com/docker/docker/pkg/progress"
 	"github.com/docker/docker/reference"
 	"github.com/docker/docker/registry"
+	"github.com/docker/engine-api/types"
 	"golang.org/x/net/context"
 )
 
 // ImagePullConfig stores pull configuration.
 type ImagePullConfig struct {
 	// MetaHeaders stores HTTP headers with metadata about the image
-	// (DockerHeaders with prefix X-Meta- in the request).
 	MetaHeaders map[string][]string
 	// AuthConfig holds authentication credentials for authenticating with
 	// the registry.
@@ -61,10 +58,10 @@ func newPuller(endpoint registry.APIEndpoint, repoInfo *registry.RepositoryInfo,
 	switch endpoint.Version {
 	case registry.APIVersion2:
 		return &v2Puller{
-			blobSumService: metadata.NewBlobSumService(imagePullConfig.MetadataStore),
-			endpoint:       endpoint,
-			config:         imagePullConfig,
-			repoInfo:       repoInfo,
+			V2MetadataService: metadata.NewV2MetadataService(imagePullConfig.MetadataStore),
+			endpoint:          endpoint,
+			config:            imagePullConfig,
+			repoInfo:          repoInfo,
 		}, nil
 	case registry.APIVersion1:
 		return &v1Puller{
@@ -97,13 +94,12 @@ func Pull(ctx context.Context, ref reference.Named, imagePullConfig *ImagePullCo
 	}
 
 	var (
-		// use a slice to append the error strings and return a joined string to caller
-		errors []string
+		lastErr error
 
 		// discardNoSupportErrors is used to track whether an endpoint encountered an error of type registry.ErrNoSupport
-		// By default it is false, which means that if a ErrNoSupport error is encountered, it will be saved in errors.
+		// By default it is false, which means that if a ErrNoSupport error is encountered, it will be saved in lastErr.
 		// As soon as another kind of error is encountered, discardNoSupportErrors is set to true, avoiding the saving of
-		// any subsequent ErrNoSupport errors in errors.
+		// any subsequent ErrNoSupport errors in lastErr.
 		// It's needed for pull-by-digest on v1 endpoints: if there are only v1 endpoints configured, the error should be
 		// returned and displayed, but if there was a v2 endpoint which supports pull-by-digest, then the last relevant
 		// error is the ones from v2 endpoints not v1.
@@ -123,7 +119,7 @@ func Pull(ctx context.Context, ref reference.Named, imagePullConfig *ImagePullCo
 
 		puller, err := newPuller(endpoint, repoInfo, imagePullConfig)
 		if err != nil {
-			errors = append(errors, err.Error())
+			lastErr = err
 			continue
 		}
 		if err := puller.Pull(ctx, ref); err != nil {
@@ -140,38 +136,33 @@ func Pull(ctx context.Context, ref reference.Named, imagePullConfig *ImagePullCo
 				}
 			}
 			if fallback {
-				if _, ok := err.(registry.ErrNoSupport); !ok {
+				if _, ok := err.(ErrNoSupport); !ok {
 					// Because we found an error that's not ErrNoSupport, discard all subsequent ErrNoSupport errors.
 					discardNoSupportErrors = true
 					// append subsequent errors
-					errors = append(errors, err.Error())
+					lastErr = err
 				} else if !discardNoSupportErrors {
 					// Save the ErrNoSupport error, because it's either the first error or all encountered errors
 					// were also ErrNoSupport errors.
 					// append subsequent errors
-					errors = append(errors, err.Error())
+					lastErr = err
 				}
+				logrus.Errorf("Attempting next endpoint for pull after error: %v", err)
 				continue
 			}
-			errors = append(errors, err.Error())
-			logrus.Debugf("Not continuing with error: %v", fmt.Errorf(strings.Join(errors, "\n")))
-			if len(errors) > 0 {
-				return fmt.Errorf(strings.Join(errors, "\n"))
-			}
+			logrus.Errorf("Not continuing with pull after error: %v", err)
+			return err
 		}
 
 		imagePullConfig.ImageEventLogger(ref.String(), repoInfo.Name(), "pull")
 		return nil
 	}
 
-	if len(errors) == 0 {
-		return fmt.Errorf("no endpoints found for %s", ref.String())
+	if lastErr == nil {
+		lastErr = fmt.Errorf("no endpoints found for %s", ref.String())
 	}
 
-	if len(errors) > 0 {
-		return fmt.Errorf(strings.Join(errors, "\n"))
-	}
-	return nil
+	return lastErr
 }
 
 // writeStatus writes a status message to out. If layersDownloaded is true, the
@@ -195,17 +186,4 @@ func validateRepoName(name string) error {
 		return fmt.Errorf("'%s' is a reserved name", api.NoBaseImageSpecifier)
 	}
 	return nil
-}
-
-// tmpFileClose creates a closer function for a temporary file that closes the file
-// and also deletes it.
-func tmpFileCloser(tmpFile *os.File) func() error {
-	return func() error {
-		tmpFile.Close()
-		if err := os.RemoveAll(tmpFile.Name()); err != nil {
-			logrus.Errorf("Failed to remove temp file: %s", tmpFile.Name())
-		}
-
-		return nil
-	}
 }

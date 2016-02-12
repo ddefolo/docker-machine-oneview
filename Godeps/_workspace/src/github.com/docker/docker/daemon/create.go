@@ -2,8 +2,6 @@ package daemon
 
 import (
 	"github.com/Sirupsen/logrus"
-	"github.com/docker/docker/api/types"
-	containertypes "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/container"
 	derr "github.com/docker/docker/errors"
 	"github.com/docker/docker/image"
@@ -11,6 +9,9 @@ import (
 	"github.com/docker/docker/pkg/idtools"
 	"github.com/docker/docker/pkg/stringid"
 	volumestore "github.com/docker/docker/volume/store"
+	"github.com/docker/engine-api/types"
+	containertypes "github.com/docker/engine-api/types/container"
+	networktypes "github.com/docker/engine-api/types/network"
 	"github.com/opencontainers/runc/libcontainer/label"
 )
 
@@ -23,6 +24,11 @@ func (daemon *Daemon) ContainerCreate(params types.ContainerCreateConfig) (types
 	warnings, err := daemon.verifyContainerSettings(params.HostConfig, params.Config)
 	if err != nil {
 		return types.ContainerCreateResponse{Warnings: warnings}, err
+	}
+
+	err = daemon.verifyNetworkingConfig(params.NetworkingConfig)
+	if err != nil {
+		return types.ContainerCreateResponse{}, err
 	}
 
 	if params.HostConfig == nil {
@@ -104,11 +110,16 @@ func (daemon *Daemon) create(params types.ContainerCreateConfig) (retC *containe
 		}
 	}()
 
-	if err := daemon.createContainerPlatformSpecificSettings(container, params.Config, params.HostConfig, img); err != nil {
+	if err := daemon.createContainerPlatformSpecificSettings(container, params.Config, params.HostConfig); err != nil {
 		return nil, err
 	}
 
-	if err := daemon.updateContainerNetworkSettings(container); err != nil {
+	var endpointsConfigs map[string]*networktypes.EndpointSettings
+	if params.NetworkingConfig != nil {
+		endpointsConfigs = params.NetworkingConfig.EndpointsConfig
+	}
+
+	if err := daemon.updateContainerNetworkSettings(container, endpointsConfigs); err != nil {
 		return nil, err
 	}
 

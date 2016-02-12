@@ -4,22 +4,13 @@ import (
 	"crypto/tls"
 	"net"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/api/server/httputils"
 	"github.com/docker/docker/api/server/router"
-	"github.com/docker/docker/api/server/router/build"
-	"github.com/docker/docker/api/server/router/container"
-	"github.com/docker/docker/api/server/router/local"
-	"github.com/docker/docker/api/server/router/network"
-	"github.com/docker/docker/api/server/router/system"
-	"github.com/docker/docker/api/server/router/volume"
-	"github.com/docker/docker/daemon"
 	"github.com/docker/docker/pkg/authorization"
 	"github.com/docker/docker/utils"
-	"github.com/docker/go-connections/sockets"
 	"github.com/gorilla/mux"
 	"golang.org/x/net/context"
 )
@@ -30,45 +21,43 @@ const versionMatcher = "/v{version:[0-9.]+}"
 
 // Config provides the configuration for the API server
 type Config struct {
-	Logging          bool
-	EnableCors       bool
-	CorsHeaders      string
-	AuthZPluginNames []string
-	Version          string
-	SocketGroup      string
-	TLSConfig        *tls.Config
-	Addrs            []Addr
+	Logging                  bool
+	EnableCors               bool
+	CorsHeaders              string
+	AuthorizationPluginNames []string
+	Version                  string
+	SocketGroup              string
+	TLSConfig                *tls.Config
 }
 
 // Server contains instance details for the server
 type Server struct {
-	cfg          *Config
-	servers      []*HTTPServer
-	routers      []router.Router
-	authZPlugins []authorization.Plugin
-}
-
-// Addr contains string representation of address and its protocol (tcp, unix...).
-type Addr struct {
-	Proto string
-	Addr  string
+	cfg           *Config
+	servers       []*HTTPServer
+	routers       []router.Router
+	authZPlugins  []authorization.Plugin
+	routerSwapper *routerSwapper
 }
 
 // New returns a new instance of the server based on the specified configuration.
 // It allocates resources which will be needed for ServeAPI(ports, unix-sockets).
-func New(cfg *Config) (*Server, error) {
-	s := &Server{
+func New(cfg *Config) *Server {
+	return &Server{
 		cfg: cfg,
 	}
-	for _, addr := range cfg.Addrs {
-		srv, err := s.newServer(addr.Proto, addr.Addr)
-		if err != nil {
-			return nil, err
+}
+
+// Accept sets a listener the server accepts connections into.
+func (s *Server) Accept(addr string, listeners ...net.Listener) {
+	for _, listener := range listeners {
+		httpServer := &HTTPServer{
+			srv: &http.Server{
+				Addr: addr,
+			},
+			l: listener,
 		}
-		logrus.Debugf("Server created for HTTP on %s (%s)", addr.Proto, addr.Addr)
-		s.servers = append(s.servers, srv...)
+		s.servers = append(s.servers, httpServer)
 	}
-	return s, nil
 }
 
 // Close closes servers and thus stop receiving requests
@@ -80,12 +69,14 @@ func (s *Server) Close() {
 	}
 }
 
-// ServeAPI loops through all initialized servers and spawns goroutine
-// with Server method for each. It sets CreateMux() as Handler also.
-func (s *Server) ServeAPI() error {
+// serveAPI loops through all initialized servers and spawns goroutine
+// with Server method for each. It sets createMux() as Handler also.
+func (s *Server) serveAPI() error {
+	s.initRouterSwapper()
+
 	var chErrors = make(chan error, len(s.servers))
 	for _, srv := range s.servers {
-		srv.srv.Handler = s.CreateMux()
+		srv.srv.Handler = s.routerSwapper
 		go func(srv *HTTPServer) {
 			var err error
 			logrus.Infof("API listen on %s", srv.l.Addr())
@@ -131,19 +122,6 @@ func writeCorsHeaders(w http.ResponseWriter, r *http.Request, corsHeaders string
 	w.Header().Add("Access-Control-Allow-Methods", "HEAD, GET, POST, DELETE, PUT, OPTIONS")
 }
 
-func (s *Server) initTCPSocket(addr string) (l net.Listener, err error) {
-	if s.cfg.TLSConfig == nil || s.cfg.TLSConfig.ClientAuth != tls.RequireAndVerifyClientCert {
-		logrus.Warn("/!\\ DON'T BIND ON ANY IP ADDRESS WITHOUT setting -tlsverify IF YOU DON'T KNOW WHAT YOU'RE DOING /!\\")
-	}
-	if l, err = sockets.NewTCPSocket(addr, s.cfg.TLSConfig); err != nil {
-		return nil, err
-	}
-	if err := allocateDaemonPort(addr); err != nil {
-		return nil, err
-	}
-	return
-}
-
 func (s *Server) makeHTTPHandler(handler httputils.APIFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// log the handler call
@@ -171,14 +149,11 @@ func (s *Server) makeHTTPHandler(handler httputils.APIFunc) http.HandlerFunc {
 	}
 }
 
-// InitRouters initializes a list of routers for the server.
-func (s *Server) InitRouters(d *daemon.Daemon) {
-	s.addRouter(container.NewRouter(d))
-	s.addRouter(local.NewRouter(d))
-	s.addRouter(network.NewRouter(d))
-	s.addRouter(system.NewRouter(d))
-	s.addRouter(volume.NewRouter(d))
-	s.addRouter(build.NewRouter(d))
+// AddRouters initializes a list of routers for the server.
+func (s *Server) AddRouters(routers ...router.Router) {
+	for _, r := range routers {
+		s.addRouter(r)
+	}
 }
 
 // addRouter adds a new router to the server.
@@ -186,11 +161,10 @@ func (s *Server) addRouter(r router.Router) {
 	s.routers = append(s.routers, r)
 }
 
-// CreateMux initializes the main router the server uses.
-// we keep enableCors just for legacy usage, need to be removed in the future
-func (s *Server) CreateMux() *mux.Router {
+// createMux initializes the main router the server uses.
+func (s *Server) createMux() *mux.Router {
 	m := mux.NewRouter()
-	if os.Getenv("DEBUG") != "" {
+	if utils.IsDebugEnabled() {
 		profilerSetup(m, "/debug/")
 	}
 
@@ -206,4 +180,37 @@ func (s *Server) CreateMux() *mux.Router {
 	}
 
 	return m
+}
+
+// Wait blocks the server goroutine until it exits.
+// It sends an error message if there is any error during
+// the API execution.
+func (s *Server) Wait(waitChan chan error) {
+	if err := s.serveAPI(); err != nil {
+		logrus.Errorf("ServeAPI error: %v", err)
+		waitChan <- err
+		return
+	}
+	waitChan <- nil
+}
+
+func (s *Server) initRouterSwapper() {
+	s.routerSwapper = &routerSwapper{
+		router: s.createMux(),
+	}
+}
+
+// Reload reads configuration changes and modifies the
+// server according to those changes.
+// Currently, only the --debug configuration is taken into account.
+func (s *Server) Reload(debug bool) {
+	debugEnabled := utils.IsDebugEnabled()
+	switch {
+	case debugEnabled && !debug: // disable debug
+		utils.DisableDebug()
+		s.routerSwapper.Swap(s.createMux())
+	case debug && !debugEnabled: // enable debug
+		utils.EnableDebug()
+		s.routerSwapper.Swap(s.createMux())
+	}
 }
