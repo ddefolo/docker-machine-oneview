@@ -48,7 +48,7 @@ customize.
        --engine-install-url "https://get.docker.com"                                                        Custom URL to use for engine installation [$MACHINE_DOCKER_INSTALL_URL]
        --engine-opt [--engine-opt option --engine-opt option]                                               Specify arbitrary flags to include with the created engine in the form flag=value
        --engine-insecure-registry [--engine-insecure-registry option --engine-insecure-registry option]     Specify insecure registries to allow with the created engine
-       --engine-registry-mirror [--engine-registry-mirror option --engine-registry-mirror option]           Specify registry mirrors to use
+       --engine-registry-mirror [--engine-registry-mirror option --engine-registry-mirror option]           Specify registry mirrors to use [$ENGINE_REGISTRY_MIRROR]
        --engine-label [--engine-label option --engine-label option]                                         Specify labels for the created engine
        --engine-storage-driver                                                                              Specify a storage driver to use with the engine
        --engine-env [--engine-env option --engine-env option]                                               Specify environment variables to set in the engine
@@ -60,6 +60,7 @@ customize.
        --swarm-opt [--swarm-opt option --swarm-opt option]                                                  Define arbitrary flags for swarm
        --swarm-host "tcp://0.0.0.0:3376"                                                                    ip/socket to listen on for Swarm master
        --swarm-addr                                                                                         addr to advertise for Swarm (default: detect and use the machine IP)
+       --swarm-experimental                                                                                 Enable Swarm experimental features
 
 Additionally, drivers can specify flags that Machine can accept as part of their
 plugin code.  These allow users to customize the provider-specific parameters of
@@ -84,11 +85,12 @@ invoking the `create` help text.
        --engine-install-url "https://get.docker.com"                                                        Custom URL to use for engine installation [$MACHINE_DOCKER_INSTALL_URL]
        --engine-label [--engine-label option --engine-label option]                                         Specify labels for the created engine
        --engine-opt [--engine-opt option --engine-opt option]                                               Specify arbitrary flags to include with the created engine in the form flag=value
-       --engine-registry-mirror [--engine-registry-mirror option --engine-registry-mirror option]           Specify registry mirrors to use
+       --engine-registry-mirror [--engine-registry-mirror option --engine-registry-mirror option]           Specify registry mirrors to use [$ENGINE_REGISTRY_MIRROR]
        --engine-storage-driver                                                                              Specify a storage driver to use with the engine
        --swarm                                                                                              Configure Machine with Swarm
        --swarm-addr                                                                                         addr to advertise for Swarm (default: detect and use the machine IP)
        --swarm-discovery                                                                                    Discovery service to use with Swarm
+       --swarm-experimental                                                                                 Enable Swarm experimental features
        --swarm-host "tcp://0.0.0.0:3376"                                                                    ip/socket to listen on for Swarm master
        --swarm-image "swarm:latest"                                                                         Specify Docker image to use for Swarm [$MACHINE_SWARM_IMAGE]
        --swarm-master                                                                                       Configure Machine to be a Swarm master
@@ -197,7 +199,7 @@ specify arbitrary environment variables to be set within the engine with the syn
 
 In addition to being able to configure Docker Engine options as listed above,
 you can use Machine to specify how the created Swarm master should be
-configured). There is a `--swarm-strategy` flag, which you can use to specify
+configured. There is a `--swarm-strategy` flag, which you can use to specify
 the [scheduling strategy](https://docs.docker.com/swarm/scheduler/strategy/)
 which Docker Swarm should use (Machine defaults to the `spread` strategy).
 There is also a general purpose `--swarm-opt` option which works similar to how
@@ -205,7 +207,9 @@ the aforementioned `--engine-opt` option does, except that it specifies options
 for the `swarm manage` command (used to boot a master node) instead of the base
 command. You can use this to configure features that power users might be
 interested in, such as configuring the heartbeat interval or Swarm's willingness
-to over-commit resources.
+to over-commit resources. There is also the `--swarm-experimental` flag, that
+allows you to access [experimental features](https://github.com/docker/swarm/tree/master/experimental)
+in Docker Swarm.
 
 If you're not sure how to configure these options, it is best to not specify
 configuration at all. Docker Machine will choose sensible defaults for you and
@@ -224,3 +228,15 @@ Example create:
 This will set the swarm scheduling strategy to "binpack" (pack in containers as
 tightly as possible per host instead of spreading them out), and the "heartbeat"
 interval to 5 seconds.
+
+## Pre-create check
+
+Since many drivers require a certain set of conditions to be in place before
+they can successfully perform a create (e.g. VirtualBox should be installed, or
+the provided API credentials should be valid), Docker Machine has a "pre-create
+check" which is specified at the driver level.
+
+If this pre-create check succeeds, Docker Machine will proceed with the creation
+as normal.  If the pre-create check fails, the Docker Machine process will exit
+with status code 3 to indicate that the source of the non-zero exit was the
+pre-create check failing.

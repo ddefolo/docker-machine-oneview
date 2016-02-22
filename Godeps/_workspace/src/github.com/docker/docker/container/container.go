@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	containertypes "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/daemon/exec"
 	"github.com/docker/docker/daemon/execdriver"
 	"github.com/docker/docker/daemon/logger"
@@ -23,8 +22,10 @@ import (
 	"github.com/docker/docker/pkg/promise"
 	"github.com/docker/docker/pkg/signal"
 	"github.com/docker/docker/pkg/symlink"
+	"github.com/docker/docker/pkg/system"
 	"github.com/docker/docker/runconfig"
 	"github.com/docker/docker/volume"
+	containertypes "github.com/docker/engine-api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/opencontainers/runc/libcontainer/label"
 )
@@ -183,6 +184,30 @@ func (container *Container) WriteHostConfig() error {
 	return json.NewEncoder(f).Encode(&container.HostConfig)
 }
 
+// SetupWorkingDirectory sets up the container's working directory as set in container.Config.WorkingDir
+func (container *Container) SetupWorkingDirectory() error {
+	if container.Config.WorkingDir == "" {
+		return nil
+	}
+	container.Config.WorkingDir = filepath.Clean(container.Config.WorkingDir)
+
+	pth, err := container.GetResourcePath(container.Config.WorkingDir)
+	if err != nil {
+		return err
+	}
+
+	if err := system.MkdirAll(pth, 0755); err != nil {
+		pthInfo, err2 := os.Stat(pth)
+		if err2 == nil && pthInfo != nil && !pthInfo.IsDir() {
+			return derr.ErrorCodeNotADir.WithArgs(container.Config.WorkingDir)
+		}
+
+		return err
+	}
+
+	return nil
+}
+
 // GetResourcePath evaluates `path` in the scope of the container's BaseFS, with proper path
 // sanitisation. Symlinks are all scoped to the BaseFS of the container, as
 // though the container's BaseFS was `/`.
@@ -199,7 +224,8 @@ func (container *Container) WriteHostConfig() error {
 func (container *Container) GetResourcePath(path string) (string, error) {
 	// IMPORTANT - These are paths on the OS where the daemon is running, hence
 	// any filepath operations must be done in an OS agnostic way.
-	cleanPath := filepath.Join(string(os.PathSeparator), path)
+
+	cleanPath := cleanResourcePath(path)
 	r, e := symlink.FollowSymlinkInScope(filepath.Join(container.BaseFS, cleanPath), container.BaseFS)
 	return r, e
 }
@@ -232,6 +258,9 @@ func (container *Container) ExitOnNext() {
 // Resize changes the TTY of the process running inside the container
 // to the given height and width. The container must be running.
 func (container *Container) Resize(h, w int) error {
+	if container.Command.ProcessConfig.Terminal == nil {
+		return fmt.Errorf("Container %s does not have a terminal ready", container.ID)
+	}
 	if err := container.Command.ProcessConfig.Terminal.Resize(h, w); err != nil {
 		return err
 	}

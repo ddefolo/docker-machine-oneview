@@ -10,13 +10,13 @@ import (
 	"github.com/docker/machine/libmachine/auth"
 	"github.com/docker/machine/libmachine/cert"
 	"github.com/docker/machine/libmachine/check"
-	"github.com/docker/machine/libmachine/crashreport"
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/drivers/plugin/localbinary"
 	"github.com/docker/machine/libmachine/drivers/rpc"
 	"github.com/docker/machine/libmachine/engine"
 	"github.com/docker/machine/libmachine/host"
 	"github.com/docker/machine/libmachine/log"
+	"github.com/docker/machine/libmachine/mcnerror"
 	"github.com/docker/machine/libmachine/mcnutils"
 	"github.com/docker/machine/libmachine/persist"
 	"github.com/docker/machine/libmachine/provision"
@@ -31,6 +31,7 @@ type API interface {
 	NewHost(driverName string, rawDriver []byte) (*host.Host, error)
 	Create(h *host.Host) error
 	persist.Store
+	GetMachinesDir() string
 }
 
 type Client struct {
@@ -74,7 +75,7 @@ func (api *Client) NewHost(driverName string, rawDriver []byte) (*host.Host, err
 				ServerKeyPath:    filepath.Join(api.GetMachinesDir(), "server-key.pem"),
 			},
 			EngineOptions: &engine.Options{
-				InstallURL:    "https://get.docker.com",
+				InstallURL:    drivers.DefaultEngineInstallURL,
 				StorageDriver: "aufs",
 				TLSVerify:     true,
 			},
@@ -122,7 +123,9 @@ func (api *Client) Create(h *host.Host) error {
 	log.Info("Running pre-create checks...")
 
 	if err := h.Driver.PreCreateCheck(); err != nil {
-		return fmt.Errorf("Error with pre-create check: %s", err)
+		return mcnerror.ErrDuringPreCreate{
+			Cause: err,
+		}
 	}
 
 	if err := api.Save(h); err != nil {
@@ -132,18 +135,7 @@ func (api *Client) Create(h *host.Host) error {
 	log.Info("Creating machine...")
 
 	if err := api.performCreate(h); err != nil {
-		vBoxLog := ""
-		if h.DriverName == "virtualbox" {
-			vBoxLog = filepath.Join(api.GetMachinesDir(), h.Name, h.Name, "Logs", "VBox.log")
-		}
-
-		return crashreport.CrashError{
-			Cause:       err,
-			Command:     "Create",
-			Context:     "api.performCreate",
-			DriverName:  h.DriverName,
-			LogFilePath: vBoxLog,
-		}
+		return fmt.Errorf("Error creating machine: %s", err)
 	}
 
 	log.Debug("Reticulating splines...")
@@ -168,11 +160,6 @@ func (api *Client) performCreate(h *host.Host) error {
 	log.Info("Waiting for machine to be running, this may take a few minutes...")
 	if err := mcnutils.WaitFor(drivers.MachineInState(h.Driver, state.Running)); err != nil {
 		return fmt.Errorf("Error waiting for machine to be running: %s", err)
-	}
-
-	log.Info("Machine is running, waiting for SSH to be available...")
-	if err := drivers.WaitForSSH(h.Driver); err != nil {
-		return fmt.Errorf("Error waiting for SSH: %s", err)
 	}
 
 	log.Info("Detecting operating system of created instance...")

@@ -6,6 +6,8 @@ GO_PACKAGES := $(GO_PACKAGES) golang.org/x/crypto/ssh
 # needed by docker/docker or docker/machine
 GO_PACKAGES := $(GO_PACKAGES) github.com/Sirupsen/logrus
 GO_PACKAGES := $(GO_PACKAGES) github.com/Azure/go-ansiterm
+GO_PACKAGES := $(GO_PACKAGES) github.com/Azure/go-ansiterm/winterm
+GO_PACKAGES := $(GO_PACKAGES) golang.org/x/sys/unix
 
 GO15VENDOREXPERIMENT := 1
 

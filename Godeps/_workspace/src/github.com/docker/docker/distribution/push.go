@@ -7,8 +7,6 @@ import (
 	"io"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/docker/distribution/digest"
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/distribution/metadata"
 	"github.com/docker/docker/distribution/xfer"
 	"github.com/docker/docker/image"
@@ -16,6 +14,7 @@ import (
 	"github.com/docker/docker/pkg/progress"
 	"github.com/docker/docker/reference"
 	"github.com/docker/docker/registry"
+	"github.com/docker/engine-api/types"
 	"github.com/docker/libtrust"
 	"golang.org/x/net/context"
 )
@@ -23,7 +22,6 @@ import (
 // ImagePushConfig stores push configuration.
 type ImagePushConfig struct {
 	// MetaHeaders store HTTP headers with metadata about the image
-	// (DockerHeaders with prefix X-Meta- in the request).
 	MetaHeaders map[string][]string
 	// AuthConfig holds authentication credentials for authenticating with
 	// the registry.
@@ -72,12 +70,11 @@ func NewPusher(ref reference.Named, endpoint registry.APIEndpoint, repoInfo *reg
 	switch endpoint.Version {
 	case registry.APIVersion2:
 		return &v2Pusher{
-			blobSumService: metadata.NewBlobSumService(imagePushConfig.MetadataStore),
-			ref:            ref,
-			endpoint:       endpoint,
-			repoInfo:       repoInfo,
-			config:         imagePushConfig,
-			layersPushed:   pushMap{layersPushed: make(map[digest.Digest]bool)},
+			v2MetadataService: metadata.NewV2MetadataService(imagePushConfig.MetadataStore),
+			ref:               ref,
+			endpoint:          endpoint,
+			repoInfo:          repoInfo,
+			config:            imagePushConfig,
 		}, nil
 	case registry.APIVersion1:
 		return &v1Pusher{
@@ -147,11 +144,12 @@ func Push(ctx context.Context, ref reference.Named, imagePushConfig *ImagePushCo
 					confirmedV2 = confirmedV2 || fallbackErr.confirmedV2
 					err = fallbackErr.err
 					lastErr = err
+					logrus.Errorf("Attempting next endpoint for push after error: %v", err)
 					continue
 				}
 			}
 
-			logrus.Debugf("Not continuing with error: %v", err)
+			logrus.Errorf("Not continuing with push after error: %v", err)
 			return err
 		}
 
@@ -173,7 +171,14 @@ func Push(ctx context.Context, ref reference.Named, imagePushConfig *ImagePushCo
 // argument so that it can be used with httpBlobWriter's ReadFrom method.
 // Using httpBlobWriter's Write method would send a PATCH request for every
 // Write call.
-func compress(in io.Reader) io.ReadCloser {
+//
+// The second return value is a channel that gets closed when the goroutine
+// is finished. This allows the caller to make sure the goroutine finishes
+// before it releases any resources connected with the reader that was
+// passed in.
+func compress(in io.Reader) (io.ReadCloser, chan struct{}) {
+	compressionDone := make(chan struct{})
+
 	pipeReader, pipeWriter := io.Pipe()
 	// Use a bufio.Writer to avoid excessive chunking in HTTP request.
 	bufWriter := bufio.NewWriterSize(pipeWriter, compressionBufSize)
@@ -192,7 +197,8 @@ func compress(in io.Reader) io.ReadCloser {
 		} else {
 			pipeWriter.Close()
 		}
+		close(compressionDone)
 	}()
 
-	return pipeReader
+	return pipeReader, compressionDone
 }

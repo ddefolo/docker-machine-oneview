@@ -4,16 +4,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types"
-	eventtypes "github.com/docker/docker/api/types/events"
-	"github.com/docker/docker/api/types/filters"
+	"golang.org/x/net/context"
+
 	Cli "github.com/docker/docker/cli"
 	"github.com/docker/docker/opts"
 	"github.com/docker/docker/pkg/jsonlog"
 	flag "github.com/docker/docker/pkg/mflag"
+	"github.com/docker/engine-api/types"
+	eventtypes "github.com/docker/engine-api/types/events"
+	"github.com/docker/engine-api/types/filters"
 )
 
 // CmdEvents prints a live stream of real time events from the server.
@@ -47,7 +50,7 @@ func (cli *DockerCli) CmdEvents(args ...string) error {
 		Filters: eventFilterArgs,
 	}
 
-	responseBody, err := cli.client.Events(options)
+	responseBody, err := cli.client.Events(context.Background(), options)
 	if err != nil {
 		return err
 	}
@@ -99,7 +102,13 @@ func printOutput(event eventtypes.Message, output io.Writer) {
 
 	if len(event.Actor.Attributes) > 0 {
 		var attrs []string
-		for k, v := range event.Actor.Attributes {
+		var keys []string
+		for k := range event.Actor.Attributes {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			v := event.Actor.Attributes[k]
 			attrs = append(attrs, fmt.Sprintf("%s=%s", k, v))
 		}
 		fmt.Fprintf(output, " (%s)", strings.Join(attrs, ", "))

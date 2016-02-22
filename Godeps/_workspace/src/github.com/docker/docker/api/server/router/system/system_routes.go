@@ -8,11 +8,11 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/api"
 	"github.com/docker/docker/api/server/httputils"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/events"
-	"github.com/docker/docker/api/types/filters"
-	timetypes "github.com/docker/docker/api/types/time"
 	"github.com/docker/docker/pkg/ioutils"
+	"github.com/docker/engine-api/types"
+	"github.com/docker/engine-api/types/events"
+	"github.com/docker/engine-api/types/filters"
+	timetypes "github.com/docker/engine-api/types/time"
 	"golang.org/x/net/context"
 )
 
@@ -68,16 +68,9 @@ func (s *systemRouter) getEvents(ctx context.Context, w http.ResponseWriter, r *
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-
-	// This is to ensure that the HTTP status code is sent immediately,
-	// so that it will not block the receiver.
-	w.WriteHeader(http.StatusOK)
-	if flusher, ok := w.(http.Flusher); ok {
-		flusher.Flush()
-	}
-
 	output := ioutils.NewWriteFlusher(w)
 	defer output.Close()
+	output.Flush()
 
 	enc := json.NewEncoder(output)
 

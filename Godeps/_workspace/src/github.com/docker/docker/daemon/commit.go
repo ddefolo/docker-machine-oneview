@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types"
-	containertypes "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/container"
 	"github.com/docker/docker/dockerversion"
 	"github.com/docker/docker/image"
@@ -16,6 +14,8 @@ import (
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/ioutils"
 	"github.com/docker/docker/reference"
+	"github.com/docker/engine-api/types"
+	containertypes "github.com/docker/engine-api/types/container"
 	"github.com/docker/go-connections/nat"
 )
 
@@ -88,6 +88,10 @@ func merge(userConf, imageConf *containertypes.Config) error {
 		for k, v := range imageConf.Volumes {
 			userConf.Volumes[k] = v
 		}
+	}
+
+	if userConf.StopSignal == "" {
+		userConf.StopSignal = imageConf.StopSignal
 	}
 	return nil
 }
@@ -204,7 +208,10 @@ func (daemon *Daemon) Commit(name string, c *types.ContainerCommitConfig) (strin
 		}
 	}
 
-	daemon.LogContainerEvent(container, "commit")
+	attributes := map[string]string{
+		"comment": c.Comment,
+	}
+	daemon.LogContainerEventWithAttributes(container, "commit", attributes)
 	return id.String(), nil
 }
 

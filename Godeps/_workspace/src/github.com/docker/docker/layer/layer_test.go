@@ -548,10 +548,7 @@ func TestTarStreamStability(t *testing.T) {
 }
 
 func assertLayerDiff(t *testing.T, expected []byte, layer Layer) {
-	expectedDigest, err := digest.FromBytes(expected)
-	if err != nil {
-		t.Fatal(err)
-	}
+	expectedDigest := digest.FromBytes(expected)
 
 	if digest.Digest(layer.DiffID()) != expectedDigest {
 		t.Fatalf("Mismatched diff id for %s, got %s, expected %s", layer.ChainID(), layer.DiffID(), expected)
@@ -573,10 +570,7 @@ func assertLayerDiff(t *testing.T, expected []byte, layer Layer) {
 		t.Fatalf("Mismatched tar stream size for %s, got %d, expected %d", layer.ChainID(), len(actual), len(expected))
 	}
 
-	actualDigest, err := digest.FromBytes(actual)
-	if err != nil {
-		t.Fatal(err)
-	}
+	actualDigest := digest.FromBytes(actual)
 
 	if actualDigest != expectedDigest {
 		logByteDiff(t, actual, expected)
@@ -707,67 +701,4 @@ func TestRegisterExistingLayer(t *testing.T) {
 	}
 
 	assertReferences(t, layer2a, layer2b)
-}
-
-func graphDiffSize(ls Store, l Layer) (int64, error) {
-	cl := getCachedLayer(l)
-	var parent string
-	if cl.parent != nil {
-		parent = cl.parent.cacheID
-	}
-	return ls.(*layerStore).driver.DiffSize(cl.cacheID, parent)
-}
-
-func TestLayerSize(t *testing.T) {
-	ls, cleanup := newTestStore(t)
-	defer cleanup()
-
-	content1 := []byte("Base contents")
-	content2 := []byte("Added contents")
-
-	layer1, err := createLayer(ls, "", initWithFiles(newTestFile("file1", content1, 0644)))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	layer2, err := createLayer(ls, layer1.ChainID(), initWithFiles(newTestFile("file2", content2, 0644)))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	layer1DiffSize, err := graphDiffSize(ls, layer1)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if int(layer1DiffSize) != len(content1) {
-		t.Fatalf("Unexpected diff size %d, expected %d", layer1DiffSize, len(content1))
-	}
-
-	layer1Size, err := layer1.Size()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if expected := len(content1); int(layer1Size) != expected {
-		t.Fatalf("Unexpected size %d, expected %d", layer1Size, expected)
-	}
-
-	layer2DiffSize, err := graphDiffSize(ls, layer2)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if int(layer2DiffSize) != len(content2) {
-		t.Fatalf("Unexpected diff size %d, expected %d", layer2DiffSize, len(content2))
-	}
-
-	layer2Size, err := layer2.Size()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if expected := len(content1) + len(content2); int(layer2Size) != expected {
-		t.Fatalf("Unexpected size %d, expected %d", layer2Size, expected)
-	}
 }
