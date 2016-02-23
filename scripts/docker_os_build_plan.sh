@@ -15,10 +15,6 @@ fi
 
 DOCKER_USER=${DOCKER_USER_INPUT:-"docker"}
 
-# boot the external interface, replace this to another interface dependening on your hardware
-ifup $INTERFACE
-echo "Completed bringing $INTERFACE up, $?"
-
 # optionally set some persistent proxy server configuration
 if [ "${PROXY_ENABLE}" = "true" ]; then
 cat > "/etc/environment" << EOF
@@ -66,12 +62,8 @@ ${DOCKER_USER} ALL=(ALL) NOPASSWD:ALL
 SUDOERS_EOF
 echo "Completed updating permissions for sudoers on user ${DOCKER_USER}, $?"
 
-# modify primary nic eno50 to start on boot
-sed -i 's/ONBOOT=no/ONBOOT=yes/g' /etc/sysconfig/network-scripts/ifcfg-eno50
 sed -i "s/localhost.localdomain/${DOCKER_HOSTNAME}/g" /etc/hostname
 echo "Completed hostname update : $(cat /etc/hostname), $?"
-
-echo "public_ip=$(ifconfig ${INTERFACE}|grep inet |head -1 | awk '{print $2}')"
 
 echo "docker host provisioned by docker-machine oneview driver" >> /etc/motd
 echo "docker customizations complete"
