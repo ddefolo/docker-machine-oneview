@@ -15,7 +15,8 @@ else
 DOCKER_IMAGE_NAME := "docker-machine-build"
 DOCKER_CONTAINER_NAME := docker-machine-build-container
 # get the dockerfile from docker/machine project so we stay in sync with the versions they use for go
-DOCKER_FILE_URL := "https://raw.githubusercontent.com/docker/machine/master/Dockerfile"
+# TODO: delete DOCKER_FILE_URL := "https://raw.githubusercontent.com/docker/machine/master/Dockerfile"
+DOCKER_FILE_URL := file://$(PREFIX)/Dockerfile
 DOCKER_FILE := .dockerfile.machine
 
 noop:
