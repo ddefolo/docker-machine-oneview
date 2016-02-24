@@ -35,7 +35,7 @@ Provisioning an operating system onto the allocated hardware that this driver wi
    get script from : ```drivers/oneview/scripts/docker_os_build_plan.sh```
 You can choose to name the build step docker_os_build_prereq or anything that applies for your setup.  The purpose for this script is to prepare the environment with basic user configuration and networking startup.  The script should avoid fully provisioning docker, as this is managed by upstream docker contributions to the docker-machine project.
 4. Configure the parameters for the build step that was added in step 3 to have the following arguments :
-@docker_user@ "@public_key@" @docker_hostname@ "@proxy_config@" "@proxy_enable@" "@interface@"
+@docker_user@ "@public_key@" @docker_hostname@ "@proxy_config@" "@proxy_enable@"
 
 ### Build Step Arguments
 Build step arguments can be controlled by options passed to the docker-machine-oneview driver.  Update these options as needed.
@@ -50,7 +50,7 @@ no_proxy=/var/run/docker.sock,company.com,localhost,127.0.0.1'
 ```
 The string will be stored in /etc/environment for the host machine.
 * @proxy_enable@ when set to true, @proxy_config@ will be saved.
-* @interface@ the name of the network interface that should be used for docker and machine traffic.
+
 
 ### Extra setup on OS Build Plan
 
