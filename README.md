@@ -16,7 +16,7 @@ USE_CONTAINER=1 make test
 ```
 
 ### From your local system
-* Install golang 1.5 or better
+* Install golang 1.6 or better
 * Install go pakcages listed in .travis.yml
 ```
 make test
