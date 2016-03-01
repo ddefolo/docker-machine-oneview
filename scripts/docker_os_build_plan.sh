@@ -27,7 +27,7 @@ fi
 if [ "$DOCKER_USER" = "root" ]; then
   echo "WARNING : docker-engine user should not be configured as root on bare metal systems, ${DOCKER_USER}."
 else
-  grep "${DOCKER_USER}" /etc/passwd || useradd "${DOCKER_USER}" -d "/home/${DOCKER_USER}"
+  grep "^${DOCKER_USER}:" /etc/passwd || useradd "${DOCKER_USER}" -d "/home/${DOCKER_USER}"
   echo "Completed adding user account ${DOCKER_USER}, $?"
 fi
 
