@@ -6,7 +6,7 @@ DOCKER_PUBKEY=$2
 DOCKER_HOSTNAME=$3
 DOCKER_PROXY=$4
 PROXY_ENABLE=$5
-INTERFACE=$6
+
 if [ -z "${DOCKER_PUBKEY}" ]; then
   echo "ERROR : this script requires a public key for docker user!"
   echo "USAGE: $0 <docker user> '<public key>'"
