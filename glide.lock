@@ -1,0 +1,33 @@
+hash: d7335f8aae29854b571436f454b851e93c280ea6acc7934647a40796b157e8f7
+updated: 2016-08-14T18:31:24.634497627Z
+imports:
+- name: github.com/Azure/go-ansiterm
+  version: 70b2c90b260171e829f1ebd7c17f600c11858dbe
+- name: github.com/davecgh/go-spew
+  version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
+  subpackages:
+  - spew
+- name: github.com/docker/docker
+  version: 7889dc71a2e860590d3e3c4051d6008bc94f8b47
+  subpackages:
+  - pkg/term
+- name: github.com/docker/machine
+  version: b85aac15463faf0e69f41d757291db9ab4c056f3
+  subpackages:
+  - libmachine/log
+- name: github.com/pmezard/go-difflib
+  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  subpackages:
+  - difflib
+- name: github.com/Sirupsen/logrus
+  version: 446d1c146faa8ed3f4218f056fcd165f6bcfda81
+- name: github.com/stretchr/testify
+  version: f390dcf405f7b83c997eac1b06768bb9f44dec18
+  subpackages:
+  - assert
+- name: golang.org/x/crypto
+  version: 552e9d568fde9701ea1944fb01c8aadaceaa7353
+  subpackages:
+  - curve25519
+  - ssh
+testImports: []

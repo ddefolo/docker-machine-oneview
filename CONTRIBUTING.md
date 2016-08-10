@@ -19,15 +19,20 @@ project work.   Please see read the [docker contribution](https://github.com/doc
 The requirements to build Machine are:
 
 1. A running instance of Docker or a Golang 1.5 development environment
+   If you are not using docker for build, you must set enviroment option
+   `USE_CONTAINER=false`.  Otherwise most targets will build with docker.
 2. The `bash` shell
 3. [Make](https://www.gnu.org/software/make/)
+4. When building dependencies with target `make glide` you will need go and glide
+   installed.
 
 ## Build using Docker containers
 
-To build the `docker-machine` binary using containers, simply run:
+To build the `docker-machine` binary, simply run:
 
-    $ export USE_CONTAINER=true
+```
     $ make build
+```
 
 ## Built binary
 
@@ -35,7 +40,9 @@ After the build is complete a `bin/docker-machine-driver-oneview` binary will be
 
 You may call:
 
+```
     $ make clean
+```
 
 to clean-up build results.
 
@@ -43,15 +50,21 @@ to clean-up build results.
 
 To run basic validation (dco, fmt), and the project unit tests, call:
 
+```
     $ make test
+```
 
 If you want more indepth validation (vet, lint), and all tests with race detection, call:
 
+```
     $ make validate
+```
 
 If you want to simply check dco, fmt, or lint use:
 
+```
     $ make check
+```
 
 If you make a pull request, it is highly encouraged that you submit tests for
 the code that you have added or modified in the same pull request.
@@ -60,7 +73,9 @@ the code that you have added or modified in the same pull request.
 
 To generate an html code coverage report of the Machine codebase, run:
 
+```
     make coverage-serve
+```
 
 And navigate to http://localhost:8000 (hit `CTRL+C` to stop the server).
 
@@ -68,7 +83,9 @@ And navigate to http://localhost:8000 (hit `CTRL+C` to stop the server).
 
 Alternatively, if you are building natively, you can simply run:
 
+```
     make coverage-html
+```
 
 This will generate and open the report file.
 
@@ -83,40 +100,15 @@ This will generate and open the report file.
 
 ### Advanced build targets
 
-Just build the machine binary itself (native):
-
-    make machine
-
-Just build the plugins (native):
-
-    make plugins
-
-Build for all supported oses and architectures (binaries will be in the `bin` project subfolder):
-
-    make cross
-
 Build for a specific list of oses and architectures:
 
-    TARGET_OS=linux TARGET_ARCH="amd64 arm" make cross
+    TARGET_OS=linux TARGET_ARCH="amd64 arm" make build
 
 You can further control build options through the following environment variables:
 
     DEBUG=true # enable debug build
     STATIC=true # build static (note: when cross-compiling, the build is always static)
     VERBOSE=true # verbose output
-    PREFIX=folder # put binaries in another folder (not the default `./bin`)
-
-Scrub build results:
-
-    make build-clean
-
-### Coverage targets
-
-    make coverage-html
-    make coverage-serve
-    make coverage-send
-    make coverage-generate
-    make coverage-clean
 
 ### Tests targets
 
@@ -130,13 +122,6 @@ Scrub build results:
     make vet
     make lint
     make dco
-
-## Integration Tests
-
-### Setup
-
-We use [BATS](https://github.com/sstephenson/bats) for integration testing, so,
-first make sure to [install it](https://github.com/sstephenson/bats#installing-bats-from-source).
 
 # Reporting other issues
 

@@ -10,3 +10,4 @@ docker-machine*
 ./bin
 cover
 Godeps/_workspace/src/github.com/HewlettPackard/
+.glide
