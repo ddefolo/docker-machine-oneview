@@ -72,9 +72,6 @@ checkError "github-release is not installed, go get -u github.com/aktau/github-r
 command -v openssl > /dev/null 2>&1
 checkError "You need openssl to generate binaries signature, brew install it, aborting."
 
-command -v docker-machine > /dev/null 2>&1
-checkError "You must have a docker-machine in your path"
-
 getLatestTags
 
 GITHUB_VERSION="v${VERSION}"
@@ -94,28 +91,6 @@ while true; do
         * ) echo "😡   Please answer yes or no.";;
     esac
 done
-
-display "Checking machine 'release' status"
-MACHINE_STATUS=$(docker-machine status release)
-if [[ "$?" -ne 0 ]]; then
-  display "Machine 'release' does not exist, creating it"
-  createMachine
-else
-  if [[ "${MACHINE_STATUS}" != "Running" ]]; then
-    display "Machine 'release' is not running, trying to start it"
-    docker-machine start release
-    docker-machine env release
-    if [[ "$?" -ne 0 ]]; then
-      display "Machine 'release' could not be started, removing and creating a fresh new one"
-      createMachine
-    fi
-    display "Loosing 5 seconds to the VirtualBox gods"
-    sleep 5
-  fi
-fi
-
-eval $(docker-machine env release)
-checkError "Machine 'release' is in a weird state, aborting"
 
 if [[ -d "${RELEASE_DIR}" ]]; then
   display "Cleaning up ${RELEASE_DIR}"
