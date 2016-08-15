@@ -11,6 +11,15 @@ define gocross
 		-ldflags "$(GO_LDFLAGS) -extldflags -static" $(GO_GCFLAGS) $(3);
 endef
 
+
+# get oneview golang vendor path
+define go-get
+	go get -u $(1);
+endef
+
+go-install-oneview:
+		$(call go-get,github.com/HewlettPackard/oneview-golang)
+
 # XXX building with -a fails in debug (with -N -l) ????
 
 # Independent targets for every bin

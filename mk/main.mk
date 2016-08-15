@@ -3,18 +3,14 @@ GO_LDFLAGS := -X `go list ./version`.GitCommit=`git rev-parse --short HEAD`
 GO_GCFLAGS :=
 
 # Full package list
-# PKGS := $(shell go list -tags "$(BUILDTAGS)" ./oneview/... | grep -v "/vendor/" | grep -v "/Godeps/")
 PKGS := ./cmd/... ./oneview/... ./version/...
-
 
 # Resolving binary dependencies for specific targets
 GOLINT_BIN := $(GOPATH)/bin/golint
 GOLINT := $(shell [ -x $(GOLINT_BIN) ] && echo $(GOLINT_BIN) || echo '')
 
-# Support go1.5 vendoring (let us avoid messing with GOPATH or using godep)
-ifneq ($(GO15VENDOREXPERIMENT),1)
+# Setup GOPATH
 GOPATH := $(GOPATH):$(PREFIX)/Godeps/_workspace
-endif
 
 # Honor debug
 # note when compiling directly on mac with DEBUG option i was getting this error:
@@ -55,11 +51,11 @@ include mk/validate.mk
 
 # Build native machine and all drivers
 default: build
-build: godeps-init-oneview build-x
+build: go-install-oneview build-x
 release: clean test build release-x
 clean: coverage-clean build-clean
-test: check test-short
-check: godeps-init-oneview dco fmt vet lint
+test: go-install-oneview check test-short
+check: dco fmt vet lint
 validate: check test-short test-long
 cross: build-x
 install:
