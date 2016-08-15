@@ -52,7 +52,7 @@ include mk/validate.mk
 # Build native machine and all drivers
 default: build
 build: go-install-oneview build-x
-release: clean test build release-x
+release: release-x
 clean: coverage-clean build-clean
 test: go-install-oneview check test-short
 check: dco fmt vet lint

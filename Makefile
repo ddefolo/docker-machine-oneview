@@ -11,6 +11,8 @@ include Makefile.inc
 
 ifneq (,$(findstring test-integration,$(MAKECMDGOALS)))
 	include mk/main.mk
+else ifneq (,$(findstring release,$(MAKECMDGOALS)))
+	include mk/main.mk
 else ifeq ($(USE_CONTAINER),false)
 	include mk/main.mk
 else
@@ -53,6 +55,8 @@ test: gen-dockerfile
 				-e ONEVIEW_DEBUG \
 				-e GH_USER \
 				-e GH_REPO \
+				-e VERSION \
+				-e GITHUB_TOKEN \
 				-e USE_CONTAINER=false \
 				$(DOCKER_IMAGE_NAME) \
 				make $@
