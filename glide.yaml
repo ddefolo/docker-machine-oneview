@@ -11,15 +11,15 @@ import:
 #   - icsp
 #   - ov
 - package: github.com/Azure/go-ansiterm
-  version: 70b2c90b260171e829f1ebd7c17f600c11858dbe
+  version: fa152c58bc15761d0200cb75fe958b89a9d4888e
 - package: github.com/Sirupsen/logrus
-  version: 446d1c146faa8ed3f4218f056fcd165f6bcfda81
+  version: "~0.10"
 - package: github.com/davecgh/go-spew
   version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
   subpackages:
   - spew
 - package: github.com/docker/docker
-  version: "~1.12"
+  version: "v1.12.0"
   subpackages:
   - pkg/term
 - package: github.com/docker/machine
@@ -27,7 +27,7 @@ import:
   subpackages:
   - libmachine/log
 - package: github.com/pmezard/go-difflib
-  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  version: "~1.0"
   subpackages:
   - difflib
 - package: github.com/stretchr/testify
@@ -35,7 +35,6 @@ import:
   subpackages:
   - assert
 - package: golang.org/x/crypto
-  version: 552e9d568fde9701ea1944fb01c8aadaceaa7353
   subpackages:
   - curve25519
   - ssh
