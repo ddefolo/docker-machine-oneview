@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/HewlettPackard/oneview-golang/icsp"
@@ -24,7 +25,7 @@ type Driver struct {
 	IloUser              string
 	IloPassword          string
 	IloPort              int
-	OSBuildPlan          string
+	OSBuildPlans         []string
 	SSHUser              string
 	SSHPort              int
 	SSHPublicKey         string
@@ -46,7 +47,7 @@ var (
 	ErrDriverMissingEndPointOptionOV   = errors.New("Missing option --oneview-ov-endpoint or environment ONEVIEW_OV_ENDPOINT")
 	ErrDriverMissingEndPointOptionICSP = errors.New("Missing option --oneview-icsp-endpoint or environment ONEVIEW_ICSP_ENDPOINT")
 	ErrDriverMissingTemplateOption     = errors.New("Missing option --oneview-server-template or environment ONEVIEW_SERVER_TEMPLATE")
-	ErrDriverMissingBuildPlanOption    = errors.New("Missing option --oneview-os-plan or ONEVIEW_OS_PLAN")
+	ErrDriverMissingBuildPlanOption    = errors.New("Missing option --oneview-os-plans or ONEVIEW_OS_PLANS")
 )
 
 // NewDriver - create a OneView object driver
@@ -136,20 +137,20 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			EnvVar: "ONEVIEW_SERVER_TEMPLATE",
 		},
 		mcnflag.StringFlag{
-			Name:   "oneview-os-plan",
-			Usage:  "OneView ICSP OS Build plan to use for OS provisioning, see ICS OS Plan for setup.",
+			Name:   "oneview-os-plans",
+			Usage:  "Comma separated list of OneView ICsp OS Build plans to use for OS provisioning, see ICsp OS Plan for setup.",
 			Value:  "RHEL71_DOCKER_1.8",
-			EnvVar: "ONEVIEW_OS_PLAN",
+			EnvVar: "ONEVIEW_OS_PLANS",
 		},
 		mcnflag.StringFlag{
 			Name:   "oneview-ilo-user",
-			Usage:  "ILO User id that is used during ICSP server creation.",
+			Usage:  "ILO User id that is used during ICsp server creation.",
 			Value:  "docker",
 			EnvVar: "ONEVIEW_ILO_USER",
 		},
 		mcnflag.StringFlag{
 			Name:   "oneview-ilo-password",
-			Usage:  "ILO password that is used during ICSP server creation.",
+			Usage:  "ILO password that is used during ICsp server creation.",
 			Value:  "",
 			EnvVar: "ONEVIEW_ILO_PASSWORD",
 		},
@@ -224,7 +225,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.SSHPort = flags.Int("oneview-ssh-port")
 
 	d.ServerTemplate = flags.String("oneview-server-template")
-	d.OSBuildPlan = flags.String("oneview-os-plan")
+	d.OSBuildPlans = strings.Split(flags.String("oneview-os-plans"), ",")
 
 	d.SwarmMaster = flags.Bool("swarm-master")
 	d.SwarmHost = flags.String("swarm-host")
@@ -245,8 +246,11 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 		return ErrDriverMissingTemplateOption
 	}
 
-	if d.OSBuildPlan == "" {
-		return ErrDriverMissingBuildPlanOption
+	// error if one of the plans is empty string
+	for _, osplan := range d.OSBuildPlans {
+		if osplan == "" {
+			return ErrDriverMissingBuildPlanOption
+		}
 	}
 
 	return nil
@@ -340,7 +344,7 @@ func (d *Driver) Create() error {
 		IloPassword:      d.IloPassword,
 		IloIPAddress:     d.Hardware.GetIloIPAddress(), // MpIpAddress for v1
 		IloPort:          d.IloPort,
-		OSBuildPlan:      d.OSBuildPlan,  // name of the OS build plan
+		OSBuildPlans:     d.OSBuildPlans, // array of OS Build Plans to apply
 		PublicSlotID:     d.PublicSlotID, // this is the slot id of the public interface
 		PublicMAC:        publicmac,      // Server profile mac address, overrides slotid
 		ServerProperties: sp,
@@ -389,7 +393,7 @@ func closeAll(d *Driver) {
 	}
 	err = d.ClientICSP.SessionLogout()
 	if err != nil {
-		log.Warnf("ICSP Session Logout : %s", err)
+		log.Warnf("ICsp Session Logout : %s", err)
 	}
 }
 
