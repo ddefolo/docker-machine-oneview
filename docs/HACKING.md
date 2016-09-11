@@ -116,6 +116,21 @@ script/build  -os="darwin" -arch="amd64"
 alias build_machine='script/build  -os="darwin" -arch="amd64"'
 ```
 
+Working with oneview-golang source
+------------------------------
+Sometimes we want to make edits to the oneview-golang source before making any changes
+to our current project.  This enables us to do end-to-end hacking on the golang
+sdk for oneview as well as the plugin for docker-machine.
+
+1. First make sure that the source for oneview-golang is checkout out relative to 
+   the source for this project.  Example:  ../oneview-golang
+
+2. Use the following command to build the source for the plugin:
+
+   ```
+   ONEVIEW_FROM_SRC=1 make build
+   ```
+
 Updating external dependencies
 ------------------------------
 This project is no relying on glide to provide reliable & repeatable builds.
