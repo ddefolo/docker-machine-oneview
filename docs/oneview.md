@@ -126,7 +126,7 @@ Environment variables and default values:
 | `--oneview-ssh-port`       | OneView build plan ssh host port
 |                            |
 | `--oneview-server-template`| OneView server template to use for blade provisioning, see OneView Server Template for setup.
-| `--oneview-os-plans`       | Comma separated list of OneView ICsp OS Build plans to use for OS provisioning. Note, this usto be --oneview-os-plan, which is no longer available.
+| `--oneview-os-plans`       | Comma separated list of OneView ICsp OS Build plans to use for OS provisioning. Note, this used to be --oneview-os-plan, which is no longer available.
 |                            |
 | `--oneview-ilo-user`       | ILO user id that is used during ICsp server creation
 | `--oneview-ilo-password`   | ILO password that is used durring ICsp server creation
