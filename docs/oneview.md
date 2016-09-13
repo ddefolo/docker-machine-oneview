@@ -30,7 +30,7 @@ Infrastructure](http://h20195.www2.hp.com/V2/GetDocument.aspx?docname=4AA6-2595E
 Provisioning an operating system onto the allocated hardware that this driver will create requires us to have a working Insight Control server provisioning (ICsp) OS build plan (OSbp) created.  In addition the ICsp server should have dhcpv4 setup so that public interfaces for the server receive a routable ip address at startup.
 
 1. Use one of the standard RedHat Linux 7.1 boot images located under OS Build Plans (ProLiant OS - RHEL 7.1 x64 Scripted Install).
-2. Choose the action to save a new OS build plan.  The boot image can be named anything, but this driver will use RHEL71_DOCKER_1.8 for the default.  If you want an alternate name, please make sure to pass the --oneview-os-plan option with the alternate name.
+2. Choose the action to save a new OS build plan.  The boot image can be named anything, but this driver will use RHEL71_DOCKER_1.8 for the default.  If you want an alternate name, please make sure to pass the --oneview-os-plan option with the alternate name.  A list of build plans can be specified by using a comma to seperate the list.  Each build plan will be executed in succession.
 3. On the build plan (step 25) add a bash script step to the next to the last step that is waiting on the server to boot.  The script contents for this step should appear as the following:
    get script from : ```drivers/oneview/scripts/docker_os_build_plan.sh```
 You can choose to name the build step docker_os_build_prereq or anything that applies for your setup.  The purpose for this script is to prepare the environment with basic user configuration and networking startup.  The script should avoid fully provisioning docker, as this is managed by upstream docker contributions to the docker-machine project.
@@ -126,10 +126,10 @@ Environment variables and default values:
 | `--oneview-ssh-port`       | OneView build plan ssh host port
 |                            |
 | `--oneview-server-template`| OneView server template to use for blade provisioning, see OneView Server Template for setup.
-| `--oneview-os-plan`        | OneView ICSP OS Build plan to use for OS provisioning, see ICS OS Plan for setup.
+| `--oneview-os-plans`       | Comma separated list of OneView ICsp OS Build plans to use for OS provisioning. Note, this used to be --oneview-os-plan, which is no longer available.
 |                            |
-| `--oneview-ilo-user`       | ILO user id that is used during ICSP server creation
-| `--oneview-ilo-password`   | ILO password that is used durring ICSP server creation
+| `--oneview-ilo-user`       | ILO user id that is used during ICsp server creation
+| `--oneview-ilo-password`   | ILO password that is used durring ICsp server creation
 | `--oneview-ilo-port`       | Optional ILO port to use, defaults to 443
 
 

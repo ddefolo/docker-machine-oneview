@@ -47,7 +47,7 @@
         "ServerProfileName": "docker_machine_test01",
         "HardwareTypeURI": "/rest/server-hardware-types/486B9A87-FCEB-4E9E-9E50-B0F54FAA0903",
         "GroupURI": "/rest/enclosure-groups/120eb19a-2447-4d26-a779-52bb009ff594",
-        "OSBuildPlan":"RHEL71_DOCKER_1.8"
+        "OSBuildPlans":"RHEL71_DOCKER_1.8"
       },
       "expects_data": {
         "IloIPAddress":  "16.85.0.55",

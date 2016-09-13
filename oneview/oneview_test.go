@@ -3,6 +3,7 @@ package oneview
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/HewlettPackard/oneview-golang/icsp"
@@ -117,12 +118,13 @@ func TestCreateMachine(t *testing.T) {
 // TestCustomizeServer - simulate second part of create
 func TestCustomizeServer(t *testing.T) {
 	var (
-		err                                                 error
-		driver                                              Driver
-		d                                                   *OneViewTest
-		c                                                   *ov.OVClient
-		ic                                                  *icsp.ICSPClient
-		serialNumber, osbuildplan, hostname, user, pass, ip string
+		err                                    error
+		driver                                 Driver
+		d                                      *OneViewTest
+		c                                      *ov.OVClient
+		ic                                     *icsp.ICSPClient
+		serialNumber, hostname, user, pass, ip string
+		osbuildplans                           []string
 	)
 	if os.Getenv("ONEVIEW_TEST_ACCEPTANCE") != "true" {
 		return
@@ -149,7 +151,7 @@ func TestCustomizeServer(t *testing.T) {
 		assert.NoError(t, err, "getBlade threw error -> %s\n", err)
 		serialNumber = driver.Profile.SerialNumber.String()
 
-		osbuildplan = d.Tc.GetTestData(d.Env, "OSBuildPlan").(string)
+		osbuildplans = strings.Split(d.Tc.GetTestData(d.Env, "OSBuildPlans").(string), ",")
 
 		var sp *icsp.CustomServerAttributes
 		sp = sp.New()
@@ -176,8 +178,8 @@ func TestCustomizeServer(t *testing.T) {
 			IloPassword:      pass,
 			IloIPAddress:     ip,
 			IloPort:          443,
-			OSBuildPlan:      osbuildplan, // name of the OS build plan
-			PublicSlotID:     1,           // this is the slot id of the public interface
+			OSBuildPlans:     osbuildplans, // name of the OS build plan
+			PublicSlotID:     1,            // this is the slot id of the public interface
 			ServerProperties: sp,
 		}
 		// create d.Server and apply a build plan and configure the custom attributes
