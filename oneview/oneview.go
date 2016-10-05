@@ -89,6 +89,12 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Value:  "",
 			EnvVar: "ONEVIEW_OV_ENDPOINT",
 		},
+		mcnflag.IntFlag{
+			Name:   "oneview-ov-apiversion",
+			Usage:  "Force api version to an older release, ie; 201",
+			Value:  1,
+			EnvVar: "ONEVIEW_OV_APIVERSION",
+		},
 		mcnflag.StringFlag{
 			Name:   "oneview-icsp-user",
 			Usage:  "User Name to OneView Insight Controller",
@@ -112,6 +118,12 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Usage:  "OneView Insight Controller URL Endpoint",
 			Value:  "",
 			EnvVar: "ONEVIEW_ICSP_ENDPOINT",
+		},
+		mcnflag.IntFlag{
+			Name:   "oneview-icsp-apiversion",
+			Usage:  "Force api version to an older release, ie; 200",
+			Value:  1,
+			EnvVar: "ONEVIEW_ICSP_APIVERSION",
 		},
 		mcnflag.BoolFlag{
 			Name:   "oneview-sslverify",
@@ -202,17 +214,22 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 		flags.String("oneview-icsp-domain"),
 		flags.String("oneview-icsp-endpoint"),
 		flags.Bool("oneview-sslverify"),
-		1)
+		flags.Int("oneview-icsp-apiversion"))
 
 	d.ClientOV = d.ClientOV.NewOVClient(flags.String("oneview-ov-user"),
 		flags.String("oneview-ov-password"),
 		flags.String("oneview-ov-domain"),
 		flags.String("oneview-ov-endpoint"),
 		flags.Bool("oneview-sslverify"),
-		1)
+		flags.Int("oneview-ov-apiversion"))
 
-	d.ClientICSP.RefreshVersion()
-	d.ClientOV.RefreshVersion()
+	// we only get the version from /version if it's not setup becuse 1 is not a real version
+	if flags.Int("oneview-icsp-apiversion") == 1 {
+		d.ClientICSP.RefreshVersion()
+	}
+	if flags.Int("oneview-ov-apiversion") == 1 {
+		d.ClientOV.RefreshVersion()
+	}
 
 	d.IloUser = flags.String("oneview-ilo-user")
 	d.IloPassword = flags.String("oneview-ilo-password")

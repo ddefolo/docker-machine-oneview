@@ -14,7 +14,8 @@ craete an environment, `drivers/oneview/.oneview.env`, script to export these va
 
 ```bash
 cat > "$(git rev-parse --show-toplevel)/drivers/oneview/.oneview.env" << ONEVIEW
-ONEVIEW_APIVERSION=120
+ONEVIEW_OV_APIVERSION=201
+ONEVIEW_ICSP_APIVERSION=200
 
 ONEVIEW_ILO_USER=docker
 ONEVIEW_ILO_PASSWORD=password
@@ -122,7 +123,7 @@ Sometimes we want to make edits to the oneview-golang source before making any c
 to our current project.  This enables us to do end-to-end hacking on the golang
 sdk for oneview as well as the plugin for docker-machine.
 
-1. First make sure that the source for oneview-golang is checkout out relative to 
+1. First make sure that the source for oneview-golang is checkout out relative to
    the source for this project.  Example:  ../oneview-golang
 
 2. Use the following command to build the source for the plugin:
