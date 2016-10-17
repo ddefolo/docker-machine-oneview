@@ -1,4 +1,4 @@
-FROM hub.docker.hpecorp.net/library/ubuntu
+FROM ubuntu
 
 #
 # Install docker tools and cli
@@ -6,7 +6,7 @@ FROM hub.docker.hpecorp.net/library/ubuntu
 ENV PATH "$PATH:/usr/local/bin/docker"
 ENV DOCKER_CLI_VERSION "1.11.0"
 ENV DOCKER_MACHINE_VERSION "v0.8.1"
-ENV DOCKER_MACHINE_ONEVIEW_VERSION "v0.5.5"
+ENV DOCKER_MACHINE_ONEVIEW_VERSION "v0.8.1"
 ENV DOCKER_MACHINE_URL "https://github.com/docker/machine/releases/download/${DOCKER_MACHINE_VERSION}/docker-machine-Linux-x86_64"
 ENV DOCKER_MACHINE_ONEVIEW_URL "https://github.com/HewlettPackard/docker-machine-oneview/releases/download/${DOCKER_MACHINE_ONEVIEW_VERSION}/docker-machine-driver-oneview_linux-amd64"
 RUN apt-get -y update && \
