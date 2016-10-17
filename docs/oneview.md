@@ -114,11 +114,13 @@ Environment variables and default values:
 | `--oneview-ov-password`    | String Password to OneView
 | `--oneview-ov-domain`      | String Domain to OneView
 | `--oneview-ov-endpoint`    | String url end point, base path
+| `--oneview-ov-apiversion`  | Force api version to an older release, ie; 201
 |                            |
 | `--oneview-icsp-user`      | String User to ICSP
 | `--oneview-icsp-password`  | String Password to ICSP
 | `--oneview-icsp-domain`    | String Domain to ICSP
 | `--oneview-icsp-endpoint`  | String url end point, base path
+| `--oneview-icsp-apiversion`| Force api version to an older release, ie; 200
 |                            |
 | `--oneview-sslverify`      | Bool false means no https verification
 |                            |
