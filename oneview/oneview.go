@@ -62,10 +62,10 @@ var (
 // NewDriver - create a OneView object driver
 func NewDriver(machineName string, storePath string) drivers.Driver {
 	return &Driver{
-			BaseDriver: &drivers.BaseDriver{
-					MachineName: machineName,
-					StorePath:   storePath,
-			},
+		BaseDriver: &drivers.BaseDriver{
+			MachineName: machineName,
+			StorePath:   storePath,
+		},
 	}
 }
 
@@ -293,7 +293,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 
 	// check for the ov endpoint
 	if d.ClientOV.Endpoint == "" {
-			return ErrDriverMissingEndPointOptionOV
+		return ErrDriverMissingEndPointOptionOV
 	}
 	// check for the icsp endpoint
 	if d.ClientICSP != nil {
@@ -368,36 +368,35 @@ func (d *Driver) Create() error {
 	}
 
 	if d.OSDeployPlan != "" {
+		deploymentAttributes := make(map[string]string)
+		log.Debugf("***> GetOsDeploymentPlanByName(%s)", d.OSDeployPlan)
+		osDeploymentPlan, error := d.ClientOV.GetOSDeploymentPlanByName(d.OSDeployPlan)
+		if error != nil || osDeploymentPlan.URI.IsNil() {
+			return fmt.Errorf("Could not find osDeploymentPlan: %s", d.OSDeployPlan)
+		}
 
-	  deploymentAttributes := make(map[string]string)
-	  log.Debugf("***> GetOsDeploymentPlanByName(%s)", d.OSDeployPlan)
-	  osDeploymentPlan, error := d.ClientOV.GetOSDeploymentPlanByName(d.OSDeployPlan)
-	  if error != nil || osDeploymentPlan.URI.IsNil() {
-		return fmt.Errorf("Could not find osDeploymentPlan: %s", d.OSDeployPlan)
-	  }
+		if d.OSDeployAttributes != nil {
+			for i, v := range d.OSDeployAttributes {
+				log.Debugf("Attribute %d is %+v", int(i), v)
+				deploymentAttributes[v.Name] = v.Value
+			} 
+		}
 
-	  if d.OSDeployAttributes != nil {
-		 for i, v := range d.OSDeployAttributes {
-			 log.Debugf("Attribute %d is %+v", int(i), v)
-			 deploymentAttributes[v.Name] = v.Value
-		 } 
-	  }
+		log.Debugf("***> CreateProfileFromTemplateWithI3S")
+		SPerror := d.ClientOV.CreateProfileFromTemplateWithI3S(d.MachineName, serverProfileTemplate, serverHardware, osDeploymentPlan, deploymentAttributes)
+		if SPerror != nil {
+			return SPerror
+		}
+		if err := d.getBlade(); err != nil {
+			return err
+		}
+		// Sleep for 30s to let power lock clear
+		time.Sleep(30 * time.Second)
 
-	  log.Debugf("***> CreateProfileFromTemplateWithI3S")
-	  SPerror := d.ClientOV.CreateProfileFromTemplateWithI3S(d.MachineName, serverProfileTemplate, serverHardware, osDeploymentPlan, deploymentAttributes)
-	  if SPerror != nil {
-		return SPerror
-	  }
-	  if err := d.getBlade(); err != nil {
-		  return err
-	  }
-	  // Sleep for 30s to let power lock clear
-	  time.Sleep(30 * time.Second)
-
-	  // power on the server, and leave it in that state
-	  if err := d.Hardware.PowerOn(); err != nil {
-		  return err
-	  }
+		// power on the server, and leave it in that state
+		if err := d.Hardware.PowerOn(); err != nil {
+			return err
+		}
 	} else {
 		// create d.Hardware and d.Profile
 		if err := d.ClientOV.CreateMachine(d.MachineName, d.ServerTemplate); err != nil {
@@ -640,7 +639,7 @@ func (d *Driver) Stop() error {
 
 	// power on the server, and leave it in that state
 	if err := d.Hardware.PowerOff(); err != nil {
-			return err
+		return err
 	}
 	// cleanup
 	defer closeAll(d)
@@ -675,7 +674,7 @@ func (d *Driver) Remove() error {
 	t, err := d.ClientOV.SubmitDeleteProfile(d.Profile)
 	err = t.Wait()
 	if err != nil {
-			return err
+		return err
 	}
 	// cleanup
 	defer closeAll(d)
