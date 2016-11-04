@@ -74,143 +74,143 @@ func NewDriver(machineName string, storePath string) drivers.Driver {
 //
 func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 	return []mcnflag.Flag{
-			mcnflag.StringFlag{
-					Name:   "oneview-ov-user",
-					Usage:  "User Name to OneView Server",
-					Value:  "",
-					EnvVar: "ONEVIEW_OV_USER",
-			},
-			mcnflag.StringFlag{
-					Name:   "oneview-ov-password",
-					Usage:  "Password to OneView Server",
-					Value:  "",
-					EnvVar: "ONEVIEW_OV_PASSWORD",
-			},
-			mcnflag.StringFlag{
-					Name:   "oneview-ov-domain",
-					Usage:  "Domain to OneView Server",
-					Value:  "LOCAL",
-					EnvVar: "ONEVIEW_OV_DOMAIN",
-			},
-			mcnflag.StringFlag{
-					Name:   "oneview-ov-endpoint",
-					Usage:  "OneView Server URL Endpoint",
-					Value:  "",
-					EnvVar: "ONEVIEW_OV_ENDPOINT",
-			},
-			mcnflag.IntFlag{
-					Name:   "oneview-ov-apiversion",
-					Usage:  "Force api version to an older release, ie; 201",
-					Value:  1,
-					EnvVar: "ONEVIEW_OV_APIVERSION",
-			},
-			mcnflag.StringFlag{
-					Name:   "oneview-icsp-user",
-					Usage:  "User Name to OneView Insight Controller",
-					Value:  "",
-					EnvVar: "ONEVIEW_ICSP_USER",
-			},
-			mcnflag.StringFlag{
-					Name:   "oneview-icsp-password",
-					Usage:  "Password to OneView Insight Controller",
-					Value:  "",
-					EnvVar: "ONEVIEW_ICSP_PASSWORD",
-			},
-			mcnflag.StringFlag{
-					Name:   "oneview-icsp-domain",
-					Usage:  "Domain to OneView Insight Controller",
-					Value:  "LOCAL",
-					EnvVar: "ONEVIEW_ICSP_DOMAIN",
-			},
-			mcnflag.StringFlag{
-					Name:   "oneview-icsp-endpoint",
-					Usage:  "OneView Insight Controller URL Endpoint",
-					Value:  "",
-					EnvVar: "ONEVIEW_ICSP_ENDPOINT",
-			},
-			mcnflag.IntFlag{
-					Name:   "oneview-icsp-apiversion",
-					Usage:  "Force api version to an older release, ie; 200",
-					Value:  1,
-					EnvVar: "ONEVIEW_ICSP_APIVERSION",
-			},
-			mcnflag.BoolFlag{
-					Name:   "oneview-sslverify",
-					Usage:  "SSH private key path",
-					EnvVar: "ONEVIEW_SSLVERIFY",
-			},
-			mcnflag.StringFlag{
-					Name:   "oneview-ssh-user",
-					Usage:  "OneView build plan ssh user account",
-					Value:  "docker",
-					EnvVar: "ONEVIEW_SSH_USER",
-			},
-			mcnflag.IntFlag{
-					Name:   "oneview-ssh-port",
-					Usage:  "OneView build plan ssh host port",
-					Value:  22,
-					EnvVar: "ONEVIEW_SSH_PORT",
-			},
-			mcnflag.StringFlag{
-					Name:   "oneview-server-template",
-					Usage:  "OneView server template to use for blade provisioning, see OneView Server Template for setup.",
-					Value:  "DOCKER_1.8_OVTEMP",
-					EnvVar: "ONEVIEW_SERVER_TEMPLATE",
-			},
-			mcnflag.StringFlag{
-					Name:   "oneview-os-deploy-plan",
-					Usage:  "HPE Synergy Image Streamer OS Deploy Plan",
-					Value:  "RHEL72_Docker",
-					EnvVar: "ONEVIEW_OS_DEPLOY_PLAN",
-			},
-			mcnflag.StringFlag{
-					Name:   "oneview-os-attribs",
-					Usage:  "HPE Synergy Image Streamer OS Deploy Attributes",
-					Value:  "[{\"name\":\"fqdn\",\"value\":\"system.company.com\"}]",
-					EnvVar: "ONEVIEW_OS_ATTRIBS",
-			},
-			mcnflag.StringFlag{
-					Name:   "oneview-server-hw-name",
-					Usage:  "Server HW name to select for deployment",
-					Value:  ",CN999999999F Bay 99",
-					EnvVar: "ONEVIEW_SERVER_HW_NAME",
-			},
-			mcnflag.StringFlag{
-					Name:   "oneview-os-plans",
-					Usage:  "Comma separated list of OneView ICsp OS Build plans to use for OS provisioning, see ICsp OS Plan for setup.",
-					Value:  "RHEL71_DOCKER_1.8",
-					EnvVar: "ONEVIEW_OS_PLANS",
-			},
-			mcnflag.StringFlag{
-					Name:   "oneview-ilo-user",
-					Usage:  "ILO User id that is used during ICsp server creation.",
-					Value:  "docker",
-					EnvVar: "ONEVIEW_ILO_USER",
-			},
-			mcnflag.StringFlag{
-					Name:   "oneview-ilo-password",
-					Usage:  "ILO password that is used during ICsp server creation.",
-					Value:  "",
-					EnvVar: "ONEVIEW_ILO_PASSWORD",
-			},
-			mcnflag.IntFlag{
-					Name:   "oneview-ilo-port",
-					Usage:  "optional ILO port to use.",
-					Value:  443,
-					EnvVar: "ONEVIEW_ILO_PORT",
-			},
-			mcnflag.IntFlag{
-					Name:   "oneview-public-slotid",
-					Usage:  "Optional slot id of the public interface to use for connecting with docker.",
-					Value:  1,
-					EnvVar: "ONEVIEW_PUBLIC_SLOTID",
-			},
-			mcnflag.StringFlag{
-					Name:   "oneview-public-connection-name",
-					Usage:  "Optional Connection name to use for public interface to connect with docker, the name can be defined in server template.  Overrides slotid option.",
-					Value:  "",
-					EnvVar: "ONEVIEW_PUBLIC_CONNECTION_NAME",
-			},
+		mcnflag.StringFlag{
+			Name:   "oneview-ov-user",
+			Usage:  "User Name to OneView Server",
+			Value:  "",
+			EnvVar: "ONEVIEW_OV_USER",
+		},
+		mcnflag.StringFlag{
+			Name:   "oneview-ov-password",
+			Usage:  "Password to OneView Server",
+			Value:  "",
+			EnvVar: "ONEVIEW_OV_PASSWORD",
+		},
+		mcnflag.StringFlag{
+			Name:   "oneview-ov-domain",
+			Usage:  "Domain to OneView Server",
+			Value:  "LOCAL",
+			EnvVar: "ONEVIEW_OV_DOMAIN",
+		},
+		mcnflag.StringFlag{
+			Name:   "oneview-ov-endpoint",
+			Usage:  "OneView Server URL Endpoint",
+			Value:  "",
+			EnvVar: "ONEVIEW_OV_ENDPOINT",
+		},
+		mcnflag.IntFlag{
+			Name:   "oneview-ov-apiversion",
+			Usage:  "Force api version to an older release, ie; 201",
+			Value:  1,
+			EnvVar: "ONEVIEW_OV_APIVERSION",
+		},
+		mcnflag.StringFlag{
+			Name:   "oneview-icsp-user",
+			Usage:  "User Name to OneView Insight Controller",
+			Value:  "",
+			EnvVar: "ONEVIEW_ICSP_USER",
+		},
+		mcnflag.StringFlag{
+			Name:   "oneview-icsp-password",
+			Usage:  "Password to OneView Insight Controller",
+			Value:  "",
+			EnvVar: "ONEVIEW_ICSP_PASSWORD",
+		},
+		mcnflag.StringFlag{
+			Name:   "oneview-icsp-domain",
+			Usage:  "Domain to OneView Insight Controller",
+			Value:  "LOCAL",
+			EnvVar: "ONEVIEW_ICSP_DOMAIN",
+		},
+		mcnflag.StringFlag{
+			Name:   "oneview-icsp-endpoint",
+			Usage:  "OneView Insight Controller URL Endpoint",
+			Value:  "",
+			EnvVar: "ONEVIEW_ICSP_ENDPOINT",
+		},
+		mcnflag.IntFlag{
+			Name:   "oneview-icsp-apiversion",
+			Usage:  "Force api version to an older release, ie; 200",
+			Value:  1,
+			EnvVar: "ONEVIEW_ICSP_APIVERSION",
+		},
+		mcnflag.BoolFlag{
+			Name:   "oneview-sslverify",
+			Usage:  "SSH private key path",
+			EnvVar: "ONEVIEW_SSLVERIFY",
+		},
+		mcnflag.StringFlag{
+			Name:   "oneview-ssh-user",
+			Usage:  "OneView build plan ssh user account",
+			Value:  "docker",
+			EnvVar: "ONEVIEW_SSH_USER",
+		},
+		mcnflag.IntFlag{
+			Name:   "oneview-ssh-port",
+			Usage:  "OneView build plan ssh host port",
+			Value:  22,
+			EnvVar: "ONEVIEW_SSH_PORT",
+		},
+		mcnflag.StringFlag{
+			Name:   "oneview-server-template",
+			Usage:  "OneView server template to use for blade provisioning, see OneView Server Template for setup.",
+			Value:  "DOCKER_1.8_OVTEMP",
+			EnvVar: "ONEVIEW_SERVER_TEMPLATE",
+		},
+		mcnflag.StringFlag{
+			Name:   "oneview-os-deploy-plan",
+			Usage:  "HPE Synergy Image Streamer OS Deploy Plan",
+			Value:  "RHEL72_Docker",
+			EnvVar: "ONEVIEW_OS_DEPLOY_PLAN",
+		},
+		mcnflag.StringFlag{
+			Name:   "oneview-os-attribs",
+			Usage:  "HPE Synergy Image Streamer OS Deploy Attributes",
+			Value:  "[{\"name\":\"fqdn\",\"value\":\"system.company.com\"}]",
+			EnvVar: "ONEVIEW_OS_ATTRIBS",
+		},
+		mcnflag.StringFlag{
+			Name:   "oneview-server-hw-name",
+			Usage:  "Server HW name to select for deployment",
+			Value:  ",CN999999999F Bay 99",
+			EnvVar: "ONEVIEW_SERVER_HW_NAME",
+		},
+		mcnflag.StringFlag{
+			Name:   "oneview-os-plans",
+			Usage:  "Comma separated list of OneView ICsp OS Build plans to use for OS provisioning, see ICsp OS Plan for setup.",
+			Value:  "RHEL71_DOCKER_1.8",
+			EnvVar: "ONEVIEW_OS_PLANS",
+		},
+		mcnflag.StringFlag{
+			Name:   "oneview-ilo-user",
+			Usage:  "ILO User id that is used during ICsp server creation.",
+			Value:  "docker",
+			EnvVar: "ONEVIEW_ILO_USER",
+		},
+		mcnflag.StringFlag{
+			Name:   "oneview-ilo-password",
+			Usage:  "ILO password that is used during ICsp server creation.",
+			Value:  "",
+			EnvVar: "ONEVIEW_ILO_PASSWORD",
+		},
+		mcnflag.IntFlag{
+			Name:   "oneview-ilo-port",
+			Usage:  "optional ILO port to use.",
+			Value:  443,
+			EnvVar: "ONEVIEW_ILO_PORT",
+		},
+		mcnflag.IntFlag{
+			Name:   "oneview-public-slotid",
+			Usage:  "Optional slot id of the public interface to use for connecting with docker.",
+			Value:  1,
+			EnvVar: "ONEVIEW_PUBLIC_SLOTID",
+		},
+		mcnflag.StringFlag{
+			Name:   "oneview-public-connection-name",
+			Usage:  "Optional Connection name to use for public interface to connect with docker, the name can be defined in server template.  Overrides slotid option.",
+			Value:  "",
+			EnvVar: "ONEVIEW_PUBLIC_CONNECTION_NAME",
+		},
 	}
 }
 
@@ -240,11 +240,11 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 		d.ClientICSP = nil
 	} else {
 		d.ClientICSP = d.ClientICSP.NewICSPClient(flags.String("oneview-icsp-user"),
-				flags.String("oneview-icsp-password"),
-				flags.String("oneview-icsp-domain"),
-				flags.String("oneview-icsp-endpoint"),
-				flags.Bool("oneview-sslverify"),
-				flags.Int("oneview-icsp-apiversion"))
+			flags.String("oneview-icsp-password"),
+			flags.String("oneview-icsp-domain"),
+			flags.String("oneview-icsp-endpoint"),
+			flags.Bool("oneview-sslverify"),
+			flags.Int("oneview-icsp-apiversion"))
 
 		if flags.Int("oneview-icsp-apiversion") == 1 {
 			d.ClientICSP.RefreshVersion()
@@ -252,15 +252,15 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	}
 
 	d.ClientOV = d.ClientOV.NewOVClient(flags.String("oneview-ov-user"),
-			flags.String("oneview-ov-password"),
-			flags.String("oneview-ov-domain"),
-			flags.String("oneview-ov-endpoint"),
-			flags.Bool("oneview-sslverify"),
-			flags.Int("oneview-ov-apiversion"))
+		flags.String("oneview-ov-password"),
+		flags.String("oneview-ov-domain"),
+		flags.String("oneview-ov-endpoint"),
+		flags.Bool("oneview-sslverify"),
+		flags.Int("oneview-ov-apiversion"))
 
 	// we only get the version from /version if it's not setup becuse 1 is not a real version
 	if flags.Int("oneview-ov-apiversion") == 1 {
-			d.ClientOV.RefreshVersion()
+		d.ClientOV.RefreshVersion()
 	}
 
 	d.IloUser = flags.String("oneview-ilo-user")
@@ -304,7 +304,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 		// error if one of the plans is empty string
 		for _, osplan := range d.OSBuildPlans {
 				if osplan == "" {
-						return ErrDriverMissingBuildPlanOption
+					return ErrDriverMissingBuildPlanOption
 				}
 		}
 	}
@@ -322,19 +322,19 @@ func (d *Driver) PreCreateCheck() (err error) {
 	// verify you can connect to ov
 	ovVersion, err := d.ClientOV.GetAPIVersion()
 	if err != nil {
-			return err
+		return err
 	}
 	if ovVersion.CurrentVersion <= 0 {
-			return fmt.Errorf("Unable to get a valid version from OneView,  %+v\n", ovVersion)
+		return fmt.Errorf("Unable to get a valid version from OneView,  %+v\n", ovVersion)
 	}
 	if d.ClientICSP != nil {
 		// verify you can connect to icsp
 		icspVersion, err := d.ClientICSP.GetAPIVersion()
 		if err != nil {
-				return err
+			return err
 		}
 		if icspVersion.CurrentVersion <= 0 {
-				return fmt.Errorf("Unable to get a valid version from ICsp,  %+v\n", icspVersion)
+			return fmt.Errorf("Unable to get a valid version from ICsp,  %+v\n", icspVersion)
 		}
 	}
 	return nil
@@ -401,16 +401,16 @@ func (d *Driver) Create() error {
 	} else {
 		// create d.Hardware and d.Profile
 		if err := d.ClientOV.CreateMachine(d.MachineName, d.ServerTemplate); err != nil {
-				return err
+			return err
 		}
 
 		if err := d.getBlade(); err != nil {
-				return err
+			return err
 		}
 
 		// power off let customization bring the server online
 		if err := d.Hardware.PowerOff(); err != nil {
-				return err
+			return err
 		}
 
 		// add the server to icsp, TestCreateServer
@@ -421,9 +421,9 @@ func (d *Driver) Create() error {
 		sp.Set("public_key", d.SSHPublicKey)
 		// TODO: make a util for this
 		if len(os.Getenv("proxy_enable")) > 0 {
-				sp.Set("proxy_enable", os.Getenv("proxy_enable"))
+			sp.Set("proxy_enable", os.Getenv("proxy_enable"))
 		} else {
-				sp.Set("proxy_enable", "false")
+			sp.Set("proxy_enable", "false")
 		}
 
 		strProxy := os.Getenv("proxy_config")
@@ -436,27 +436,27 @@ func (d *Driver) Create() error {
 		// Get the mac address for public Connection on server profile
 		var publicmac string
 		if d.PublicConnectionName != "" {
-				conn, err := d.Profile.GetConnectionByName(d.PublicConnectionName)
-				if err != nil {
-						return err
-				}
-				publicmac = conn.MAC.String()
+			conn, err := d.Profile.GetConnectionByName(d.PublicConnectionName)
+			if err != nil {
+				return err
+			}
+			publicmac = conn.MAC.String()
 		} else {
-				publicmac = ""
+			publicmac = ""
 		}
 
 		// arguments for customize server
 		cs := icsp.CustomizeServer{
-				HostName:         d.MachineName,                   // machine-rack-enclosure-bay
-				SerialNumber:     d.Profile.SerialNumber.String(), // get it
-				ILoUser:          d.IloUser,
-				IloPassword:      d.IloPassword,
-				IloIPAddress:     d.Hardware.GetIloIPAddress(), // MpIpAddress for v1
-				IloPort:          d.IloPort,
-				OSBuildPlans:     d.OSBuildPlans, // array of OS Build Plans to apply
-				PublicSlotID:     d.PublicSlotID, // this is the slot id of the public interface
-				PublicMAC:        publicmac,      // Server profile mac address, overrides slotid
-				ServerProperties: sp,
+			HostName:         d.MachineName,                   // machine-rack-enclosure-bay
+			SerialNumber:     d.Profile.SerialNumber.String(), // get it
+			ILoUser:          d.IloUser,
+			IloPassword:      d.IloPassword,
+			IloIPAddress:     d.Hardware.GetIloIPAddress(), // MpIpAddress for v1
+			IloPort:          d.IloPort,
+			OSBuildPlans:     d.OSBuildPlans, // array of OS Build Plans to apply
+			PublicSlotID:     d.PublicSlotID, // this is the slot id of the public interface
+			PublicMAC:        publicmac,      // Server profile mac address, overrides slotid
+			ServerProperties: sp,
 		}
 		// create d.Server and apply a build plan and configure the custom attributes
 		if err := d.ClientICSP.CustomizeServer(cs); err != nil {
@@ -472,21 +472,21 @@ func (d *Driver) Create() error {
 		// use ssh to set keys, and test ssh
 		sshClient, err := d.getLocalSSHClient()
 		if err != nil {
-				return err
+			return err
 		}
 
 		pubKey, err := ioutil.ReadFile(d.publicSSHKeyPath())
 		if err != nil {
-				return err
+			return err
 		}
 
 		if out, err := sshClient.Output(fmt.Sprintf(
-				"printf '%%s' '%s' | tee /home/%s/.ssh/authorized_keys",
-				string(pubKey),
-				d.GetSSHUsername(),
+			"printf '%%s' '%s' | tee /home/%s/.ssh/authorized_keys",
+			string(pubKey),
+			d.GetSSHUsername(),
 		)); err != nil {
-				log.Error(out)
-				return err
+			log.Error(out)
+			return err
 		}
 	}
 	log.Infof("%s, Completed all create steps, docker provisioning will continue.", d.DriverName())
@@ -588,13 +588,13 @@ func (d *Driver) GetState() (state.State, error) {
 	}
 	switch ps {
 	case ov.P_ON:
-			return state.Running, nil
+		return state.Running, nil
 	case ov.P_OFF:
-			return state.Stopped, nil
+		return state.Stopped, nil
 	case ov.P_UKNOWN:
-			return state.Error, nil
+		return state.Error, nil
 	default:
-			return state.None, nil
+		return state.None, nil
 	}
 
 }
@@ -653,13 +653,13 @@ func (d *Driver) Remove() error {
 	log.Debug("Remove...")
 	// remove the ssh keys
 	if err := d.deleteKeyPair(); err != nil {
-			return err
+		return err
 	}
 	if err := d.Stop(); err != nil {
-			return err
+		return err
 	}
 	if err := d.getBlade(); err != nil {
-			return err
+		return err
 	}
 	if d.ClientICSP != nil {
 		// destroy the server in icsp
@@ -686,7 +686,7 @@ func (d *Driver) Remove() error {
 func (d *Driver) Restart() error {
 	log.Debug("Restarting...")
 	if err := d.Stop(); err != nil {
-			return err
+		return err
 	}
 	return d.Start()
 }
@@ -711,34 +711,34 @@ func (d *Driver) getBlade() (err error) {
 
 	d.Profile, err = d.ClientOV.GetProfileByName(d.MachineName)
 	if err != nil {
-			return err
+		return err
 	}
 
 	log.Debugf("***> check if we got a profile")
 	if d.Profile.URI.IsNil() {
-			err = fmt.Errorf("Attempting to get machine profile information, unable to find machine in oneview: %s", d.MachineName)
-			return err
+		err = fmt.Errorf("Attempting to get machine profile information, unable to find machine in oneview: %s", d.MachineName)
+		return err
 	}
 
 	// get the server hardware associated with that test profile
 	log.Debugf("***> GetServerHardware")
 	d.Hardware, err = d.ClientOV.GetServerHardware(d.Profile.ServerHardwareURI)
 	if d.Hardware.URI.IsNil() {
-			err = fmt.Errorf("Attempting to get machine blade information, unable to find machine: %s", d.MachineName)
-			return err
+		err = fmt.Errorf("Attempting to get machine blade information, unable to find machine: %s", d.MachineName)
+		return err
 	}
 
 	if d.ClientICSP != nil {
 		// get server entry in ICsp
 		if d.Hardware.VirtualSerialNumber.IsNil() {
-				// get the server profile with SerialNumber
-				d.Server, err = d.ClientICSP.GetServerBySerialNumber(d.Hardware.SerialNumber.String())
+			// get the server profile with SerialNumber
+			d.Server, err = d.ClientICSP.GetServerBySerialNumber(d.Hardware.SerialNumber.String())
 		} else {
-				// get the server profile with the VirtualSerialNumber
-				d.Server, err = d.ClientICSP.GetServerBySerialNumber(d.Hardware.VirtualSerialNumber.String())
+			// get the server profile with the VirtualSerialNumber
+			d.Server, err = d.ClientICSP.GetServerBySerialNumber(d.Hardware.VirtualSerialNumber.String())
 		}
 		if err != nil {
-				return err
+			return err
 		}
 	}
 	return err
@@ -748,12 +748,12 @@ func (d *Driver) getBlade() (err error) {
 func (d *Driver) createKeyPair() error {
 
 	if err := ssh.GenerateSSHKey(d.GetSSHKeyPath()); err != nil {
-			return err
+		return err
 	}
 
 	publicKey, err := ioutil.ReadFile(d.GetSSHKeyPath() + ".pub")
 	if err != nil {
-			return err
+		return err
 	}
 
 	log.Debugf("created keys => %s", string(publicKey))
@@ -764,22 +764,22 @@ func (d *Driver) createKeyPair() error {
 // deleteKeyPair
 func (d *Driver) deleteKeyPair() error {
 	if err := os.Remove(d.GetSSHKeyPath()); err != nil {
-			return err
+		return err
 	}
 	if err := os.Remove(d.GetSSHKeyPath() + ".pub"); err != nil {
-			return err
+		return err
 	}
 	return nil
 }
 
 func (d *Driver) getLocalSSHClient() (ssh.Client, error) {
 	sshAuth := &ssh.Auth{
-			Passwords: []string{"docker"},
-			Keys:      []string{d.GetSSHKeyPath()},
+		Passwords: []string{"docker"},
+		Keys:      []string{d.GetSSHKeyPath()},
 	}
 	sshClient, err := ssh.NewNativeClient(d.GetSSHUsername(), d.IPAddress, d.SSHPort, sshAuth)
 	if err != nil {
-			return nil, err
+		return nil, err
 	}
 
 	return sshClient, nil
