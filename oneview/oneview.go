@@ -459,12 +459,12 @@ func (d *Driver) Create() error {
 		}
 		// create d.Server and apply a build plan and configure the custom attributes
 		if err := d.ClientICSP.CustomizeServer(cs); err != nil {
-				return err
+			return err
 		}
 
 		ip, err := d.GetIP()
 		if err != nil {
-				return err
+			return err
 		}
 		d.IPAddress = ip
 
