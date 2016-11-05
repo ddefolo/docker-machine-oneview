@@ -381,18 +381,32 @@ func (d *Driver) Create() error {
 				deploymentAttributes[v.Name] = v.Value
 			} 
 		}
-
+ 		if d.SSHPublicKey != "" {
+                        // Split ssh keys into smaller parts to workaround issues in I3S
+			parts := splitStringIntoParts(d.SSHPublicKey, 250)
+			for i := 0; i < 2; i++ {
+				attribPrefix := fmt.Sprintf("sshkey%d", i+1)
+                                v := ""
+                                if i < len(parts) {
+					v = parts[i]
+                                }
+				log.Debugf("Attribute %s is %+v", attribPrefix, v)
+				deploymentAttributes[attribPrefix] = v
+                        }
+		}
 		log.Debugf("***> CreateProfileFromTemplateWithI3S")
 		SPerror := d.ClientOV.CreateProfileFromTemplateWithI3S(d.MachineName, serverProfileTemplate, serverHardware, osDeploymentPlan, deploymentAttributes)
 		if SPerror != nil {
 			return SPerror
 		}
+		log.Debugf("***> get profile and server hardware info")
 		if err := d.getBlade(); err != nil {
 			return err
 		}
-		// Sleep for 30s to let power lock clear
-		time.Sleep(30 * time.Second)
+		// Sleep for 1s to let power lock clear
+		time.Sleep(1 * time.Second)
 
+		log.Debugf("***> power on server")
 		// power on the server, and leave it in that state
 		if err := d.Hardware.PowerOn(); err != nil {
 			return err
@@ -611,13 +625,15 @@ func (d *Driver) Start() error {
 	if err := d.Hardware.PowerOn(); err != nil {
 		return err
 	}
-	// implement icsp check for is in maintenance mode or started
-	isManaged, err := d.ClientICSP.IsServerManaged(d.Hardware.SerialNumber.String())
-	if err != nil {
-		return err
-	}
-	if !isManaged {
-		return errors.New("Server was started but not ready, check icsp status")
+	if d.ClientICSP != nil {
+		// implement icsp check for is in maintenance mode or started
+		isManaged, err := d.ClientICSP.IsServerManaged(d.Hardware.SerialNumber.String())
+		if err != nil {
+			return err
+		}
+		if !isManaged {
+			return errors.New("Server was started but not ready, check icsp status")
+		}
 	}
 	return nil
 }
@@ -782,4 +798,22 @@ func (d *Driver) getLocalSSHClient() (ssh.Client, error) {
 	}
 
 	return sshClient, nil
+}
+
+func splitStringIntoParts(orig string, partSize int) []string {
+	a := []rune(orig )
+	var parts []string
+	var res string = ""
+	for i, r := range a {
+		res = res + string(r)
+		if i > 0 && (i+1)%partSize == 0 {
+		        parts = append(parts, res)
+			res = ""
+		}
+	}
+	if res != "" {
+		parts = append(parts, res)     
+        }
+	log.Debugf("split string into parts %#v", parts)
+	return parts
 }
