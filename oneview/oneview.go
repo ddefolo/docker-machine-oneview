@@ -411,6 +411,23 @@ func (d *Driver) Create() error {
 		if err := d.Hardware.PowerOn(); err != nil {
 			return err
 		}
+		ip, err := d.GetIP()
+		if err != nil {
+			return err
+		}
+		d.IPAddress = ip
+
+		// use ssh wait for the system to boot
+                sshAvailable := 0
+		for i := 0; i < 200 && sshAvailable == 0; i++ {
+		    sshClient, err := d.getLocalSSHClient()
+		    if err != nil {
+		        time.Sleep(10 * time.Second)
+			} else {
+				sshAvailable = 1 
+                                sshClient.Output("hostname")
+			}
+		}
 	} else {
 		// create d.Hardware and d.Profile
 		if err := d.ClientOV.CreateMachine(d.MachineName, d.ServerTemplate); err != nil {
@@ -502,7 +519,7 @@ func (d *Driver) Create() error {
 			return err
 		}
 	}
-	log.Infof("%s, Completed all create steps, docker provisioning will continue.", d.DriverName())
+	log.Infof("%s, Completed all create steps, provisioning will complete at first boot.", d.DriverName())
 
 	defer closeAll(d)
 	return nil
@@ -814,6 +831,5 @@ func splitStringIntoParts(orig string, partSize int) []string {
 	if res != "" {
 		parts = append(parts, res)     
         }
-	log.Debugf("split string into parts %#v", parts)
 	return parts
 }
